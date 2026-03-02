@@ -2,7 +2,7 @@ import pypboy
 import settings
 import pygame
 import os
-import imp
+import importlib
 import glob
 import time
 import game
@@ -167,7 +167,7 @@ class Module(pypboy.SubModule):
                 folders.append(self.audiofolders + f)
 
         for folder in folders:
-            config = configparser.SafeConfigParser()
+            config = configparser.ConfigParser()
 
             folder_name = os.path.basename(folder)  # Get the folder name without the full path
             if len(glob.glob(folder + "/*.ogg")) == 0:

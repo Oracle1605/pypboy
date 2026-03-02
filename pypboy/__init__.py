@@ -1,11 +1,29 @@
+import sys
+from unittest.mock import MagicMock
+
+# 1. Create a dummy GPIO module in memory
+mock_gpio = MagicMock()
+# Add the constants the code expects to find
+mock_gpio.BCM = 11
+mock_gpio.OUT = 0
+mock_gpio.IN = 1
+mock_gpio.HIGH = 1
+mock_gpio.LOW = 0
+mock_gpio.PUD_UP = 20
+mock_gpio.PUD_DOWN = 21
+
+# 2. Inject it into the system modules
+sys.modules["RPi.GPIO"] = mock_gpio
+sys.modules["smbus"] = MagicMock() # Often used for Pi-specific screens
+
+print("--- Hardware Emulation Active: GPIO and SMBus Mocked ---")
+
 import pygame
 import game
 import pypboy.ui
 import settings
 from enum import Enum
 
-if settings.GPIO_AVAILABLE:
-    import RPi.GPIO as GPIO
 
 
 class GameState(Enum):

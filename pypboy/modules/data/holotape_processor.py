@@ -1,10 +1,28 @@
 import glob
-import numpy as np
+# numpy is optional, used for waveform generation
+try:
+    import numpy as np
+except ImportError:
+    np = None
+    print("holotape_processor: numpy not installed, audio waveform disabled")
+
 import pypboy
 import pygame
 import game
 import settings
+# helper to log audio messages without causing a circular import
+
+def _log(msg: str) -> None:
+    try:
+        from pypboy.modules.data import write_log
+        write_log("audio.log", msg)
+    except Exception:
+        # if logging fails, we silently ignore to avoid crashing the player
+        pass
+
+# Use local pygcurse stub for text rendering
 import pygcurse
+
 import os
 import time
 import xml.etree.ElementTree as ET
@@ -34,10 +52,15 @@ class Module(pypboy.SubModule):
 
         self.active_holotape = None
 
+        # state used when prompting user to pick a specific audio track
+        self.track_menu = None
+        self.pending_audio_files = None
+
         holotapeCallbacks = []
         for i, holotape in enumerate(self.holotapes):
             holotapeCallbacks.append(lambda i=i: self.select_holotape(i))
 
+        # build the menu objects once during initialization
         self.topmenu = pypboy.ui.TopMenu()
         self.topmenu.label = "DATA"
         self.topmenu.title = settings.MODULE_TEXT
@@ -56,7 +79,55 @@ class Module(pypboy.SubModule):
 
         self.prev_static_text = None
 
+    def _get_audio_list(self, base_dir):
+        """Return ordered list of (path,label) for audio files in directory.
+
+        If the directory contains a holotape.xml, use the <menu><item page="...">
+        entries to establish order and human-friendly titles.  Falls back to a
+        simple sorted glob of ``*.ogg`` if XML parsing fails or produces nothing.
+        """
+        audio_entries = []
+        xmlpath = os.path.join(base_dir, 'holotape.xml')
+        if os.path.isfile(xmlpath):
+            try:
+                root = ET.parse(xmlpath).getroot()
+                for item in root.iter('item'):
+                    page = item.get('page')
+                    if page and page.lower().endswith('.ogg'):
+                        label = item.text or os.path.basename(page)
+                        path = os.path.join(base_dir, page)
+                        audio_entries.append((path, label))
+            except Exception as e:
+                print(f"audio XML parse error: {e}")
+                audio_entries = []
+        if not audio_entries:
+            import glob
+            files = sorted(glob.glob(os.path.join(base_dir, '*.ogg')))
+            audio_entries = [(f, os.path.basename(f)) for f in files]
+        return audio_entries
+
+    def start_audio_queue(self, start_index, files):
+        """Helper used during track selection.
+
+        ``files`` is a list of absolute paths; this converts them to
+        relative, retains only the portion starting at ``start_index`` and
+        pushes the result to the display object for playback.
+        """
+        _log(f"start_audio_queue index={start_index} files={files}")
+        if not files or start_index >= len(files):
+            return
+        queue = files[start_index:]
+        rels = [os.path.relpath(f, os.getcwd()) for f in queue]
+        print("Now Playing:", os.path.abspath(rels[0]))
+        if hasattr(self.active_holotape, 'load_audio_file'):
+            self.active_holotape.load_audio_file(rels)
+
     def select_holotape(self, holotape):
+        print(f"select_holotape called with index {holotape}")
+        # simply mark the chosen tape as active; audio is **not** queued here
+        # so that scanning through the list doesn't start playback.  the
+        # actual queuing occurs when the user presses ENTER in
+        # ``handle_event`` below.
         if hasattr(self, 'active_holotape') and self.active_holotape:
             self.remove(self.active_holotape)
             if self.active_holotape.alive():
@@ -64,9 +135,132 @@ class Module(pypboy.SubModule):
         self.active_holotape = self.holotapes[holotape]
 
     def handle_event(self, event):
+        # debugging: log event arrival
+        print(f"holotape_processor.handle_event: type={event.type} active_holotape={self.active_holotape}")
+        # Pypboy.run currently delivers each pygame event twice: once via
+        # Engine.handle_event and again when the engine forwards it to the
+        # active module.  certain actions (ENTER) may therefore fire two
+        # different code paths in the same frame, which caused the track
+        # selector to be created and then immediately consumed by the
+        # duplicate event.  We mark events we use here so the second pass can
+        # ignore them and avoid instantly dismissing the menu.
+        if getattr(event, '_holotape_consumed', False):
+            print(f"[DEBUG] skipping already‑consumed event {event}")
+            return
+
+        # if we're currently displaying a track‑selection menu, let arrow
+        # keys move within it and ENTER choose a file.
+        if hasattr(self, 'track_menu') and self.track_menu:
+            print(f"[DEBUG] event in track_menu: {event}")
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_RETURN:
+                    # guard against duplicate delivery of the same press
+                    if getattr(event, '_holotape_consumed', False):
+                        print(f"[DEBUG] ignoring repeated ENTER in track_menu {event}")
+                        return
+                    event._holotape_consumed = True
+                    idx = self.track_menu.selected
+                    print(f"track menu selection {idx}")
+                    # pending list now contains (path,label) tuples
+                    paths = [p for (p, _l) in self.pending_audio_files]
+                    self.start_audio_queue(idx, paths)
+                    # clean up menu and restore original one
+                    if self.track_menu.alive():
+                        self.remove(self.track_menu)
+                    self.track_menu = None
+                    self.pending_audio_files = None
+                    # restore scanline opacity now that menu is gone
+                    settings.dim_scanlines = False
+                    if hasattr(self, '_old_menu'):
+                        # put the original menu back into the group and restore the
+                        # reference so dial actions go to it again
+                        self.menu = self._old_menu
+                        self.add(self.menu)
+                        del self._old_menu
+                    # add holotape view now that a track has been chosen
+                    if self.active_holotape:
+                        print(f"[DEBUG] restoring active_holotape {self.active_holotape}")
+                        self.add(self.active_holotape)
+                    # hide the normal menus for playback
+                    settings.hide_top_menu = True
+                    settings.hide_submenu = True
+                    settings.hide_main_menu = True
+                    settings.hide_footer = False
+                    # show the audio control page
+                    if self.active_holotape and self.active_holotape.alive():
+                        last = len(self.active_holotape.holotape_data[3]) - 1
+                        self.active_holotape.write_display(last, True)
+                    return
+                # dial actions are processed elsewhere by handle_action
+            return
+
         if event.type == pygame.KEYDOWN:
             if event.key == pygame.K_RETURN:
 
+                print("ENTER pressed on holotape menu (active_holotape=", self.active_holotape, ")")
+
+                # gather audio files first so we know whether we'll need a
+                # track‑selector.  delays hiding the main menu until after the
+                # selection completes or is skipped.
+                base = os.path.abspath(
+                    os.path.join(os.path.dirname(__file__), '..', '..', '..', 'holotapes', self.active_holotape.directory)
+                )
+                audio_entries = []
+                if os.path.isdir(base):
+                    audio_entries = self._get_audio_list(base)
+
+                if audio_entries:
+                    self.pending_audio_files = audio_entries
+                    if len(audio_entries) > 1:
+                        # show track menu and keep the rest of the UI visible
+                        settings.hide_top_menu = False
+                        settings.hide_submenu = False
+                        settings.hide_main_menu = False
+                        # build a temporary menu listing each file title
+                        labels = [[label, "", ""] for (_path, label) in audio_entries]
+                        print("[DEBUG] creating track_menu with labels", labels)
+                        self.track_menu = pypboy.ui.Menu(labels, [], 0)
+                        # when the temporary track selector is active we dim the
+                        # scanline overlay so text remains legible
+                        settings.dim_scanlines = True
+                        self.track_menu.rect[0] = settings.menu_x
+                        self.track_menu.rect[1] = settings.menu_y
+                        # take the existing menu out of the render list
+                        # if the holotape view is currently drawn it will obscure the
+                        # temporary track selector, so take it out of the group and put it
+                        # back later (we already restore it after a choice is made).
+                        if self.active_holotape:
+                            print(f"[DEBUG] hiding active_holotape {self.active_holotape}")
+                            # remove from any groups so it won't cover the menu
+                            try:
+                                self.remove(self.active_holotape)
+                            except Exception:
+                                pass
+
+                        self._old_menu = self.menu
+                        self.remove(self._old_menu)
+                        # switch pointer and add new track selector
+                        self.menu = self.track_menu
+                        self.add(self.track_menu)
+                        # ensure the menu is rendered at least once so the user can
+                        # actually see the titles without having to dial around
+                        # (previously the surface was left black until the first
+                        # dial_move caused a redraw).
+                        self.track_menu.select(0)
+                        # mark the original pygame event so the engine's second
+                        # delivery doesn't immediately treat it as a selection.
+                        event._holotape_consumed = True
+                        return
+                    else:
+                        # single track, queue immediately
+                        # extract path only
+                        only = [audio_entries[0][0]]
+                        self.start_audio_queue(0, only)
+
+                # at this point either there were no audio files or the user
+                # chose one; proceed to open holotape view and hide menus.
+                # add the holotape view to the layer stack so it becomes
+                # visible immediately
                 self.add(self.active_holotape)
 
                 if self.active_holotape.alive():
@@ -74,8 +268,15 @@ class Module(pypboy.SubModule):
                     settings.hide_submenu = True
                     settings.hide_main_menu = True
                     settings.hide_footer = False
-                    # self.active_holotape.write_display(0, False)
                     print("Loading Holotape:", self.active_holotape.label)
+
+                    # show the audio control page rather than the first
+                    # page of the tape; this matches the behaviour users expect
+                    # when they select a holotape in other versions
+                    last = len(self.active_holotape.holotape_data[3]) - 1
+                    print(f"writing display page {last}")
+                    # display entire page immediately (skip typewriter)
+                    self.active_holotape.write_display(last, True)
 
                 if self.active_holotape and not self.active_holotape.skip and self.active_holotape.crawling:
                     self.active_holotape.handle_event(event)
@@ -88,11 +289,27 @@ class Module(pypboy.SubModule):
             self.active_holotape.handle_event(event)
 
     def handle_resume(self):
+        """Called when the user backs out of a holotape or the module is
+        re‑activated.
+
+        The base implementation only clears the ``paused`` flag and plays a
+        sound; we also need to make sure all of the hide_* flags are reset so
+        the holotape list is actually visible again.  Without this the menu
+        appears "empty" even though ``self.holotapes`` is untouched.
+        """
         super(Module, self).handle_resume()
         if hasattr(self, 'active_holotape') and self.active_holotape:
             self.active_holotape.clear_display()
         if self.active_holotape.alive():
             self.remove(self.active_holotape)
+        # restore visibility for all menu layers
+        settings.hide_top_menu = False
+        settings.hide_submenu = False
+        settings.hide_main_menu = False
+        settings.hide_footer = False
+        # make sure scanlines go full‑opacity again
+        settings.dim_scanlines = False
+
         if self.paused:
             self.paused = False
             settings.hide_top_menu = False
@@ -261,10 +478,20 @@ class HolotapeDisplay(game.Entity):
         self.max_lines = int((settings.HEIGHT - 100) / self.char_height) - 1
 
 
-        # Create the pygcurse surface
-        self.holotape_screen = pygcurse.PygcurseSurface(self.max_chars, self.max_lines + 1, self.font,
-                                                        settings.bright, settings.black, self.holotape_image, True,
-                                                        1000)
+        # Create the text surface; our stub handles rendering to
+        # ``self.holotape_image`` so we never need to guard for its
+        # absence.
+        self.holotape_screen = pygcurse.PygcurseSurface(
+            self.max_chars,
+            self.max_lines + 1,
+            self.font,
+            settings.bright,
+            settings.black,
+            self.holotape_image,
+            True,
+            1000,
+        )
+        # disable any automatic updates; drawing is managed manually
         self.holotape_screen._autoupdate = False
         self.holotape_screen._autodisplayupdate = False
 
@@ -290,6 +517,10 @@ class HolotapeDisplay(game.Entity):
             self.page = 0
 
         self.static_text, self.dynamic_text, self.menu, self.actions = self.fetch_page(self.holotape_data, self.page)
+
+        # ensure menu/actions lists exist to avoid attribute errors later
+        self.menu = self.menu or []
+        self.actions = self.actions or []
 
         self.static_text = self.static_text.replace('\\n', '\n').replace('\\t', '\t')
 
@@ -325,6 +556,27 @@ class HolotapeDisplay(game.Entity):
 
     def handle_event(self, event):
         if event.type == settings.EVENTS['HOLOTAPE_END']:
+            # log the fact that the current track ended
+            if self.audio_file:
+                msg = f"Track finished: {self.audio_file}"  
+                print(msg)
+                _log(msg)
+            # if we're in the middle of a queued list, advance instead of clearing
+            if hasattr(self, 'audio_queue') and self.audio_queue:
+                if self.current_track_index < len(self.audio_queue) - 1:
+                    self.current_track_index += 1
+                    msg = f"Queue advancing to next track: {self.audio_queue[self.current_track_index]}"
+                    print(msg)
+                    _log(msg)
+                    # use channel playback for smoother transition
+                    self.play_current_from_queue()
+                    return
+                else:
+                    # queue finished – drop the list so normal handling runs
+                    print("Queue completed")
+                    _log("Queue completed")
+                    self.audio_queue = []
+                    self.current_track_index = 0
             if self.holotape_waveform:
                 print("End of Audio Holotape")
                 self.holotape_waveform = None
@@ -378,6 +630,8 @@ class HolotapeDisplay(game.Entity):
         return static_text, dynamic_text, menu, actions
 
     def strip_end_block(self, line):
+        if not self.holotape_screen:
+            return ""
         text = self.holotape_screen.getchars((0, self.line, self.max_chars, 1))
         text = str(text[0])
         text = text.rstrip()
@@ -385,6 +639,10 @@ class HolotapeDisplay(game.Entity):
         return text
 
     def draw_holotape_screen(self):
+        # the text surface is always available thanks to our stub
+        if not self.holotape_screen:
+            # defensive, but should never happen
+            return
         self.line = self.holotape_screen.cursory
         self.holotape_screen.erase((0,0,self.max_chars,self.max_lines))
 
@@ -459,65 +717,75 @@ class HolotapeDisplay(game.Entity):
                 self.sfx_text.play()
 
     def render(self, *args, **kwargs):
+        # if the terminal screen module isn't available there's nothing to
+        # draw. still run the parent class in case it needs to update state.
         super(HolotapeDisplay, self).render(self, *args, **kwargs)
-        # self.current_time = time.time()
-        print ("Rendering Holotape")
-    #
-    #     if not self.debug_time:
-    #         self.debug_time = 0
-    #
-    #     time_past = time.time() - self.debug_time
-    #     if time_past:
-    #         max_fps = int(1 / time_past)
-    #         print("Holotape render took:", time_past, "max fps:", max_fps)
-    #
-    #     debug_time = time.time()
-    #
-    #     if self.alive():
-    #         if (self.current_time - self.prev_time) >= settings.fps_rate:
-    #                 self.prev_time = self.current_time
-    #                 print("Should be showing holotape", self.label)
-    #         #
-    #         #     self.image.fill((128,128,0))
-    #         #
-    #         #
-    #         #     if not self.waiting_for_input:
-    #         #         self.draw_holotape_screen()
-    #         #     else:
-    #         #         # Blink cursor at the bottom
-    #         #         if self.current_time - self.prev_cursor_time >= self.cursor_time:
-    #         #             self.prev_cursor_time = self.current_time
-    #         #             for char in range(self.max_chars):
-    #         #                 self.holotape_screen.putchar(' ', char, self.max_lines)
-    #         #             self.holotape_screen.putchar(">", 0, self.max_lines)
-    #         #             if self.console_text:
-    #         #                 self.holotape_screen.putchars(self.console_text, 2, self.max_lines)
-    #         #             else:
-    #         #                 if self.blink:
-    #         #                     self.holotape_screen.putchar(' ', 2, self.max_lines)
-    #         #                     self.blink = False
-    #         #                 else:
-    #         #                     self.holotape_screen.putchar('▯', 2, self.max_lines)
-    #         #                     self.blink = True
-    #         #     self.holotape_screen.update()
-    #         #     self.image.blit(self.holotape_image, (0, 0))
-    #         #
-    #         # if self.holotape_waveform:
-    #         #     self.console_text = "Playing Holotape Audio..."
-    #         #     self.draw_grid()
-    #         #     self.render_holotape_waveform()
-    #         #     self.image.blit(self.grid, (225, 230))
-    #         #     self.image.blit(self.holotape_waveform_image, (225, 230))
-    #         #     if not pygame.mixer.music.get_busy():
-    #         #         pygame.draw.line(self.holotape_waveform_image, settings.bright,
-    #         #                          [0, self.holotape_waveform_height / 2 + 10],
-    #         #                          [self.holotape_waveform_width, self.holotape_waveform_height / 2 + 10], 2)
-    #         # else:
-    #         #     self.holotape_waveform_image.fill((0, 0, 0))
-    #         #     self.grid.fill((0, 0, 0))
-    #         #     self.console_text = None
-    #
-    # #
+        if not self.holotape_screen:
+            return
+
+        # Always keep a running clock regardless of waveform state; the
+        # previous implementation only updated ``current_time`` when a
+        # waveform existed, which meant nothing ever drew if audio failed to
+        # queue.  Update the timer first so the rest of the method can use it.
+        self.current_time = time.time()
+
+        # maintain a simple debug timer for occasional logging
+        if not hasattr(self, 'debug_time') or self.debug_time is None:
+            self.debug_time = self.current_time
+
+        time_past = self.current_time - self.debug_time
+        if time_past:
+            max_fps = int(1 / time_past)
+            print("Holotape render took:", time_past, "max fps:", max_fps)
+            self.debug_time = self.current_time
+
+        print("Rendering Holotape")
+
+        if self.alive():
+            if (self.current_time - self.prev_time) >= settings.fps_rate:
+                self.prev_time = self.current_time
+                print("Should be showing holotape", self.label)
+
+                self.image.fill((128, 128, 0))
+
+                if not self.waiting_for_input:
+                    self.draw_holotape_screen()
+                else:
+                    # Blink cursor at the bottom
+                    if self.current_time - self.prev_cursor_time >= self.cursor_time:
+                        self.prev_cursor_time = self.current_time
+                        for char in range(self.max_chars):
+                            self.holotape_screen.putchar(' ', char, self.max_lines)
+                        self.holotape_screen.putchar(">", 0, self.max_lines)
+                        if self.console_text:
+                            self.holotape_screen.putchars(self.console_text, 2, self.max_lines)
+                        else:
+                            if self.blink:
+                                self.holotape_screen.putchar(' ', 2, self.max_lines)
+                                self.blink = False
+                            else:
+                                self.holotape_screen.putchar('▯', 2, self.max_lines)
+                                self.blink = True
+                self.holotape_screen.update()
+                self.image.blit(self.holotape_image, (0, 0))
+
+        if self.holotape_waveform:
+            self.console_text = "Playing Holotape Audio..."
+            self.draw_grid()
+            self.render_holotape_waveform()
+            self.image.blit(self.grid, (225, 230))
+
+        self.image.blit(self.holotape_waveform_image, (225, 230))
+        if not pygame.mixer.music.get_busy():
+            pygame.draw.line(self.holotape_waveform_image, settings.bright,
+                             [0, self.holotape_waveform_height / 2 + 10],
+                             [self.holotape_waveform_width, self.holotape_waveform_height / 2 + 10], 2)
+        else:
+            self.holotape_waveform_image.fill((0, 0, 0))
+            self.grid.fill((0, 0, 0))
+            self.console_text = None
+    
+     #
 
     def draw_grid(self):
         self.grid.fill((0, 0, 0))
@@ -553,33 +821,146 @@ class HolotapeDisplay(game.Entity):
         return newvalue
 
     def load_audio_file(self, file):
-        if file and file.endswith(".ogg"):
+        """Begin playback of a holotape audio file or queue.
+
+        This method is heavily instrumented to record the absolute path that is
+        attempted and whether it actually exists. Entries are written to
+        ``audio.log`` so we can see why playback might fail during normal
+        execution.
+        """
+        _log(f"load_audio_file called with {file}")
+        # announce to console when each track begins
+        if isinstance(file, str) and file.lower().endswith('.ogg'):
+            msg = f"Starting playback: {file}"
+            print(msg)
+            _log(msg)
+
+        # Converts relative paths to absolute based on the project root so
+        # working directory doesn't matter.
+        # Silently handles missing sound support or numpy.
+        # sanity checks
+        if not settings.SOUND_ENABLED:
+            print("load_audio_file: sound disabled, skipping audio request")
+            return
+
+        # accept a directory path and turn it into a queue automatically
+        if isinstance(file, str) and os.path.isdir(file):
+            # list contained ogg files and recurse
+            import glob
+
+            files = sorted(glob.glob(os.path.join(file, "*.ogg")))
+            if files:
+                self.load_audio_file(files)
+            return
+
+        # support an explicit queue of files
+        if isinstance(file, (list, tuple)):
+            import traceback
+            trace = ''.join(traceback.format_stack(limit=10))
+            _log(f"queue load invoked, stack:\n{trace}")
+            # make each path absolute too (same base as single-file case)
+            base = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', '..'))
+            queue = [os.path.normpath(os.path.join(base, f)) if not os.path.isabs(f) else f for f in file]
+            # store the list
+            self.audio_queue = queue
+            self.current_track_index = 0
+            # play first track using the channel-based helper (avoids repeated music.load)
+            self.play_current_from_queue()
+            return
+
+        # make path absolute relative to project root if necessary
+        # ``holotapes`` sits next to the top-level ``pypboy`` package, so we
+        # need to climb three levels from this module file to reach it.
+        if file and not os.path.isabs(file):
+            base = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', '..'))
+            file = os.path.normpath(os.path.join(base, file))
+
+        # handle single audio file path
+        if file and isinstance(file, str) and file.lower().endswith(".ogg"):
+            # verify existence
+            if not os.path.exists(file):
+                msg = f"Audio file not found: {file}"
+                print(msg)
+                _log(msg)
+                return
+
             print("Loading holotape page")
-            self.write_display(len(self.holotape_data[3]) - 1, True)
+            # ensure we have pages to display; skip if terminal unavailable
+            if hasattr(self, 'holotape_data') and self.holotape_data and self.holotape_screen:
+                self.write_display(len(self.holotape_data[3]) - 1, True)
+            # record the current audio file path
             self.audio_file = file
-            print("Generating waveform for", self.audio_file)
-            self.sound_object = pygame.mixer.Sound(self.audio_file)  # Load song into memory for waveform gen
 
             if settings.CURRENT_SONG:
-                # print("Saving song", settings.CURRENT_SONG, "at position", pygame.mixer.music.get_pos())
+                # save/ pause any currently playing music
                 self.saved_song = settings.CURRENT_SONG
                 self.saved_song_pos = pygame.mixer.music.get_pos()
                 pygame.mixer.music.pause()
 
-            pygame.mixer.music.load(self.audio_file)  # Load for streaming playback
-            self.audio_file_length = self.sound_object.get_length()
-            amplitude = pygame.sndarray.array(self.sound_object)  # Load the sound file
-            amplitude = amplitude.flatten()  # Load the sound file)
-            amplitude = amplitude[::settings.frame_skip]
-            amplitude = amplitude.astype('float64')
-            amplitude = (self.holotape_waveform_height * (amplitude - np.min(amplitude)) / np.ptp(amplitude)).astype(
-                int)
-            self.holotape_waveform = [int(self.holotape_waveform_height / 2)] * self.holotape_waveform_height + list(
-                amplitude + 27)
-            self.holotape_waveform_length = len(self.holotape_waveform)
-            pygame.mixer.music.set_endevent(settings.EVENTS['HOLOTAPE_END'])
-            pygame.mixer.music.play()
+            try:
+                pygame.mixer.music.load(self.audio_file)  # Load for streaming playback
+                pygame.mixer.music.set_endevent(settings.EVENTS['HOLOTAPE_END'])
+                pygame.mixer.music.play()
+            except Exception as e:
+                msg = f"Failed to start music playback: {e}"
+                print(msg)
+                _log(msg)
 
+            # compute waveform asynchronously to avoid blocking audio thread
+            if np and self.sound_object:
+                self.audio_file_length = self.sound_object.get_length()
+
+                def compute_waveform():
+                    try:
+                        amplitude = pygame.sndarray.array(self.sound_object)
+                        amplitude = amplitude.flatten()
+                        amplitude = amplitude[::settings.frame_skip]
+                        amplitude = amplitude.astype('float64')
+                        amplitude = (
+                            self.holotape_waveform_height
+                            * (amplitude - np.min(amplitude))
+                            / np.ptp(amplitude)
+                        ).astype(int)
+                        self.holotape_waveform = [
+                            int(self.holotape_waveform_height / 2)
+                        ] * self.holotape_waveform_height + list(amplitude + 27)
+                        self.holotape_waveform_length = len(self.holotape_waveform)
+                    except Exception as e:
+                        print(f"Waveform generation failed: {e}")
+                        self.holotape_waveform = None
+                        self.holotape_waveform_length = 0
+
+                import threading
+
+                thread = threading.Thread(target=compute_waveform, daemon=True)
+                thread.start()
+            else:
+                # numpy not available, no waveform
+                self.holotape_waveform = None
+                self.holotape_waveform_length = 0
+
+    def play_current_from_queue(self):
+        """Play the currently indexed track in ``self.audio_queue``.
+        """
+        if not hasattr(self, 'audio_queue') or not self.audio_queue:
+            return
+
+        if self.current_track_index < len(self.audio_queue):
+            track = self.audio_queue[self.current_track_index]
+            try:
+                sound = pygame.mixer.Sound(track)
+                channel = pygame.mixer.Channel(5)
+                channel.play(sound)
+
+                # This allows the HUD to show "Part 1 of 10"
+                self.hud_status = f"Playing: {self.current_track_index + 1}/{len(self.audio_queue)}"
+                msg = f"Now Playing: {track}"
+                print(msg)
+                _log(msg)
+            except Exception as e:
+                    msg = f"Queue Error: {e}"
+                    print(msg)
+                    _log(msg)
     def render_holotape_waveform(self):
         self.current_time = time.time()
         self.delta_time = self.current_time - self.prev_waveform_time
@@ -603,6 +984,11 @@ class HolotapeDisplay(game.Entity):
                     # Credit to https://github.com/prtx/Music-Visualizer-in-Python/blob/master/music_visualizer.py
 
     def update_cursor(self, button=None):
+        # Logic here executes regardless of the underlying text backend
+        # "Enter" to execute. Only skip visual cursor updates when the
+        # screen object is missing.
+
+        visual = bool(self.holotape_screen)
 
         if button == "Down":
             self.line = self.cursor_y
@@ -612,6 +998,80 @@ class HolotapeDisplay(game.Entity):
             self.line = self.cursor_y
             self.cursor_y = self.cursor_y - 1
             print("Up")
+
+        if visual and (button == "Down" or button == "Up"):
+            # Constrain the position to selectable areas
+            if self.cursor_y < self.menu_start:
+                self.cursor_y = self.menu_start
+                self.cursor_x = 0
+            elif self.cursor_y > self.menu_end:
+                self.cursor_y = self.menu_end
+                self.cursor_x = 0
+
+            if self.cursor_y != self.line:
+                if settings.SOUND_ENABLED:
+                    self.sfx_dial_move.play()
+                self.holotape_screen.cursor = (0, self.cursor_y)
+                self.holotape_screen.reversecolors((0, self.line, self.max_chars, 1))
+                self.holotape_screen.reversecolors((0, self.cursor_y, self.max_chars, 1))
+        
+        if button == "Enter":
+            print("Return")
+            if settings.SOUND_ENABLED:
+                self.sfx_ok.play()
+            if self.menu and self.actions:
+                if len(self.actions) > 1:
+                    menu_selection = int(
+                        self.expand(self.cursor_y, self.menu_start, self.menu_end, 0, len(self.menu) - 1))
+                else:
+                    menu_selection = 0
+
+                action = self.actions[menu_selection]
+                # print("Action=", action, "Actions =", self.actions)
+
+                if str.isdigit(action):
+                    action = int(action)
+                    self.clear_display()
+                    # print("Jumping to page", action)
+                    self.write_display(action)
+                else:
+                    if isinstance(action, str) and action.lower().endswith(".ogg"):
+                        msg = f"Found audio file: {action}"
+                        print(msg)
+                        _log(msg)
+                        self.load_audio_file("holotapes/" + self.directory + "/" + action)
+                    elif action == "Exit":
+                        settings.hide_top_menu = False
+                        settings.hide_submenu = False
+                        settings.hide_main_menu = False
+                        settings.hide_footer = False
+                        self.clear_display()
+                    elif action == "Previous":
+                        if self.page > 0:
+                            self.page = self.previous_page
+                            self.clear_display()
+                            self.write_display(self.page, True)
+                            print("Previous page")
+                    elif action == "Pause":
+                        print("Pausing/Resuming Holotape", self.page, self.previous_page)
+                        if pygame.mixer.music.get_busy():
+                            pygame.mixer.music.pause()
+                        else:
+                            pygame.mixer.music.unpause()
+                    else:
+                        settings.hide_top_menu = False
+                        settings.hide_submenu = False
+                        settings.hide_main_menu = False
+                        settings.hide_footer = False
+                        self.clear_display()
+                        print("Exiting to main menu")
+            else:
+                settings.hide_top_menu = False
+                settings.hide_submenu = False
+                settings.hide_main_menu = False
+                settings.hide_footer = False
+        
+        return self.cursor_y, self.cursor_x
 
         if button == "Down" or button == "Up":
             # Constrain the position to selectable areas
@@ -651,8 +1111,10 @@ class HolotapeDisplay(game.Entity):
                     # print("Jumping to page", action)
                     self.write_display(action)
                 else:
-                    if action.endswith(".ogg"):
-                        print("Found audio file:", action)
+                    if isinstance(action, str) and action.lower().endswith(".ogg"):
+                        msg = f"Found audio file: {action}"
+                        print(msg)
+                        _log(msg)
                         self.load_audio_file("holotapes/" + self.directory + "/" + action)
                     elif action == "Exit":
                         settings.hide_top_menu = False

@@ -2,10 +2,17 @@ import pygame
 import pygame.freetype
 import atexit
 import saved
+
 import os
 
+# Get the directory that THIS file (settings.py) is in
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+
+# If settings.py is inside a subfolder named 'pypboy', 
+# we might need to go up one level to find the assets
+ROOT_DIR = os.path.dirname(BASE_DIR)
 # Custom
-name = "ZapWizard"
+name = "E Winter"
 
 # SCREEN
 WIDTH = 720
@@ -30,6 +37,10 @@ description_box_y = 240
 # COLORS
 black = (0, 0, 0)
 bright = (0, 230, 0)
+
+# visual tweaks
+# set to True to reduce scanline opacity (used when temporary menus are shown)
+dim_scanlines = False
 light = (0, 170, 0)
 mid = (0, 120, 0)
 dim = (0, 70, 0)
@@ -301,32 +312,58 @@ PERKS = [
      "Become whisper, become shadow. You are 50% harder to detect while sneaking."],
     ["Sniper",3,"images/perks/sniper/","It's all about focus. You have improved control and can hold your breath longer when aiming with scopes."],
 ]
+CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
 
-# Detect if running on a Raspberry Pi
-PI = False
-if os.name == "posix":
-    PI = True
+# We will try two common locations for the fonts folder
+potential_root_1 = CURRENT_DIR                  # Same folder as settings.py
+potential_root_2 = os.path.dirname(CURRENT_DIR) # One level up
+
+if os.path.exists(os.path.join(potential_root_1, "fonts")):
+    ROOT_DIR = potential_root_1
+elif os.path.exists(os.path.join(potential_root_2, "fonts")):
+    ROOT_DIR = potential_root_2
 else:
-    PI - False
+    # Fallback to current directory if we can't find it
+    ROOT_DIR = CURRENT_DIR
+    print(f"!!! WARNING: 'fonts' folder not found in {potential_root_1} or {potential_root_2}")
 
+print(f"--- Pypboy is loading assets from: {ROOT_DIR} ---")
+
+# --- PI DETECTION ---
+PI = False
+
+# --- FONT INITIALIZATION ---
 pygame.font.init()
-RobotoB = {}
-RobotoR = {}
-TechMono = {}
-for x in range(10, 34):
-    RobotoB[x] = pygame.font.Font('fonts/RobotoCondensed-Bold.ttf', x)
-    RobotoR[x] = pygame.font.Font('fonts/RobotoCondensed-Regular.ttf', x)
-    TechMono[x] = pygame.font.Font('fonts/TechMono.ttf', x)
-
 pygame.freetype.init()
-FreeRobotoB = {}
-FreeRobotoR = {}
-FreeTechMono = {}
-for x in range(10, 34):
-    FreeRobotoB[x] = pygame.freetype.Font('fonts/RobotoCondensed-Bold.ttf', x)
-    FreeRobotoR[x] = pygame.freetype.Font('fonts/RobotoCondensed-Regular.ttf', x)
-    FreeTechMono[x] = pygame.freetype.Font('fonts/TechMono.ttf', x)
 
+# Define the font filenames
+FONT_FILES = {
+    'bold': 'RobotoCondensed-Bold.ttf',
+    'reg': 'RobotoCondensed-Regular.ttf',
+    'mono': 'TechMono.ttf'
+}
+
+RobotoB, RobotoR, TechMono = {}, {}, {}
+FreeRobotoB, FreeRobotoR, FreeTechMono = {}, {}, {}
+
+for x in range(10, 34):
+    try:
+        path_b = os.path.join(ROOT_DIR, 'fonts', FONT_FILES['bold'])
+        path_r = os.path.join(ROOT_DIR, 'fonts', FONT_FILES['reg'])
+        path_t = os.path.join(ROOT_DIR, 'fonts', FONT_FILES['mono'])
+        
+        # Standard Fonts
+        RobotoB[x] = pygame.font.Font(path_b, x)
+        RobotoR[x] = pygame.font.Font(path_r, x)
+        TechMono[x] = pygame.font.Font(path_t, x)
+        
+        # Freetype Fonts
+        FreeRobotoB[x] = pygame.freetype.Font(path_b, x)
+        FreeRobotoR[x] = pygame.freetype.Font(path_r, x)
+        FreeTechMono[x] = pygame.freetype.Font(path_t, x)
+    except Exception as e:
+        print(f"Error loading font at size {x}: {e}")
+        # If this fails, the paths are definitely still wrong.
 # Get and save volume and station setting
 global VOLUME
 try:
@@ -387,7 +424,7 @@ frame_skip = int(waveform_frequency / (waveform_fps * waveform_rate))
 CURRENT_SONG = None
 
 # Holotape related:
-holotape_generic = "images\inventory\holotape"
+holotape_generic = "images/inventory/holotape"
 
 # slow code debugger
 # debug_time = time.time()

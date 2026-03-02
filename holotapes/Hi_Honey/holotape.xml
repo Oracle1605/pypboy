@@ -9,6 +9,7 @@
         <menu>
             <item page="Exit">[&lt; Back]</item>
             <item page="Hi_honey!_Nora.ogg">[Play Tape]</item>
+	    <item page="Hi_honey!_Nate.ogg">[Play Tape]</item>
         </menu>
     </page>
 </data>

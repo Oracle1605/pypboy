@@ -12,10 +12,22 @@ from pypboy.modules import stats
 from pypboy.modules import boot
 from pypboy.modules import map
 from pypboy.modules import radio
-from pypboy.modules import passcode
 
-if settings.GPIO_AVAILABLE:
+
+try:
     import RPi.GPIO as GPIO
+except (ImportError, RuntimeError):
+    # Mock GPIO class for non-Pi systems
+    class GPIO_Mock:
+        BOARD = BCM = IN = OUT = HIGH = LOW = PUD_UP = PUD_DOWN = 0
+        def setmode(self, *args): pass
+        def setup(self, *args, **kwargs): pass
+        def output(self, *args): pass
+        def input(self, *args): return 0
+        def cleanup(self): pass
+        def add_event_detect(self, *args, **kwargs): pass
+    GPIO = GPIO_Mock()
+    print("Running in non-Pi mode: GPIO disabled.")
 
 
 class Pypboy(game.core.Engine):
@@ -54,7 +66,7 @@ class Pypboy(game.core.Engine):
             "items": items.Module(self),
             "stats": stats.Module(self),
             "boot": boot.Module(self),
-            "passcode": passcode.Module(self)
+            
         }
         self.switch_module(settings.STARTER_MODULE)  # Set the start screen
 

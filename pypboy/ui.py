@@ -3,7 +3,7 @@ import pygame
 import settings
 import time
 import os
-import imp
+import importlib
 # import cairosvg
 import io
 from datetime import datetime
@@ -128,8 +128,17 @@ class Scanlines(game.core.Entity):
         self.animation_time = 0.05
         self.prev_time = 0
         self.dirty = 2
+        # track current alpha so we don't call set_alpha every frame
+        self._current_alpha = 255
 
     def render(self, *args, **kwargs):
+        # adjust opacity if a menu is dimming the scanlines
+        # use a very low alpha when dimming so the overlay is almost gone
+        target_alpha = 25 if settings.dim_scanlines else 255
+        if target_alpha != self._current_alpha:
+            self.image.set_alpha(target_alpha)
+            self._current_alpha = target_alpha
+
         self.current_time = time.time()
         self.delta_time = self.current_time - self.prev_time
 
@@ -490,25 +499,28 @@ class Menu(game.Entity):
                     self.image_url = self.menu_array[i][2]
                     if os.path.isdir(self.image_url):
                         for filename in sorted(os.listdir(self.image_url)):
-                            if filename.endswith(".png"):
-                                filename = self.image_url + "/" + filename
-                                self.images.append(pygame.image.load(filename).convert_alpha())
-                                self.frameorder = []
-                                # print(filename)
-                            if filename.endswith(".svg"):
-                                svg_surface = load_svg(self.image_url + "/" + filename, self.imagebox.get_width(),
-                                                       self.imagebox.get_height())
-                                self.images.append(svg_surface)
-                                self.frameorder = []
-                                # print(filename)
-                            if filename == "frameorder.py":
-                                url = self.image_url + "/" + filename
-                                # print ("url =",url)
-                                file = imp.load_source("frameorder.py",
-                                                       os.path.join(self.image_url, "frameorder.py"))
-                                self.frameorder = file.frameorder
-                                self.frame = 0
-
+                            full_path = os.path.join(self.image_url, filename) # Use safe pathing
+                        
+                        if filename.endswith(".png"):
+                            self.images.append(pygame.image.load(full_path).convert_alpha())
+                            self.frameorder = []
+                            
+                        elif filename.endswith(".svg"):
+                            svg_surface = load_svg(full_path, self.imagebox.get_width(),
+                                                 self.imagebox.get_height())
+                            self.images.append(svg_surface)
+                            self.frameorder = []
+                            
+                        elif filename == "frameorder.py":
+                            # --- MODERN IMPORTLIB REPLACEMENT FOR IMP ---
+                            import importlib.util
+                            spec = importlib.util.spec_from_file_location("frameorder", full_path)
+                            module = importlib.util.module_from_spec(spec)
+                            spec.loader.exec_module(module)
+                            # --------------------------------------------
+                            
+                            self.frameorder = module.frameorder
+                            self.frame = 0
                     else:
                         if self.image_url:
                             self.frameorder = []
