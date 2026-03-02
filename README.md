@@ -7,6 +7,11 @@
 > I branched off from the Fallout 3 style Pip-Boy 3000 code.
 > The graphics are positioned for a 720x720 display.
 
+>_Notes from Oracle1605
+>
+>This is going to end up being a complete rewrite, but given that i am a rank amateur it will take a LONG while, assume the instructions work until they dont.
+>I will rewrite the read me as the software gets closer to completion. 
+
 ## Installation
 
 #### These installation instructions _assume_ that you're running on a Raspberry Pi running Raspberry Pi OS
