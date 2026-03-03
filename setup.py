@@ -10,5 +10,8 @@ setup(
     license='MIT',
     author='ZapWizard',
     author_email='zapwizard@gmail.com',
-    description='Pypboy 3000 MK IV'
+    description='Pypboy 3000 MK IV',
+    install_requires=[
+        'numpy>=2.0.1',
+    ],
 )

@@ -59,7 +59,7 @@ class Module(pypboy.SubModule):
     def __init__(self, *args, **kwargs):
         super(Module, self).__init__(*args, **kwargs)
 
-        self.audiofolders = 'sounds/radio/'
+        self.audiofolders = os.path.join(settings.ROOT_DIR, 'sounds', 'radio')
         self.stations = []
         self.station_menu = []
         self.station_data = self.get_station_data()
@@ -163,14 +163,15 @@ class Module(pypboy.SubModule):
         self.station_ordered = True
 
         for f in sorted(os.listdir(self.audiofolders)):
-            if not f.endswith("/"):
-                folders.append(self.audiofolders + f)
+            path = os.path.join(self.audiofolders, f)
+            if os.path.isdir(path):
+                folders.append(path)
 
         for folder in folders:
             config = configparser.ConfigParser()
 
             folder_name = os.path.basename(folder)  # Get the folder name without the full path
-            if len(glob.glob(folder + "/*.ogg")) == 0:
+            if len(glob.glob(os.path.join(folder, "*.ogg"))) == 0:
                 print("No .ogg files in:", folder)
                 continue
 
@@ -179,7 +180,7 @@ class Module(pypboy.SubModule):
             self.station_lengths = song_data[1]
             self.total_length = sum(self.station_lengths)
 
-            self.station_meta_data_file = ("./" + folder + "/" + "station.ini")
+            self.station_meta_data_file = os.path.join(folder, "station.ini")
 
             try:
                 assert os.path.exists(self.station_meta_data_file)
@@ -212,8 +213,9 @@ class Module(pypboy.SubModule):
 
         for file in sorted(os.listdir(folder)):
             if file.endswith(".ogg"):
-                files.append("./" + folder + "/" + file)
-                song_lengths.append(mutagen.File("./" + folder + "/" + file).info.length)
+                full_path = os.path.join(folder, file)
+                files.append(full_path)
+                song_lengths.append(mutagen.File(full_path).info.length)
 
         return [files, song_lengths]
 
@@ -337,7 +339,7 @@ class RadioStation(game.Entity):
         self.start_time = time.time()
         self.sum_of_song_lengths = 0
         self.start_pos = 0
-        self.static = pygame.mixer.Sound("sounds/pipboy/Radio/UI_Pipboy_Radio_StaticBackground_LP.ogg")
+        self.static = pygame.mixer.Sound(os.path.join(settings.ROOT_DIR, "sounds", "pipboy", "Radio", "UI_Pipboy_Radio_StaticBackground_LP.ogg"))
         pygame.mixer.music.set_endevent(settings.EVENTS['SONG_END'])
 
     def play_song(self):

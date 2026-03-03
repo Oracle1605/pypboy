@@ -82,6 +82,8 @@ pi@XXXX:~/Downloads/pypboy $
 
 ## Authors
 
+- Inprogress re-write of the Holotape Player functionality, + the ability to emulate the Rpi's gpio pins to enable the software to run via WSL and in native linux.
+
 - Major overhaul by ZapWizard for the Functional Pip-Boy 3000 MK IV GUI
 
 - Fixes and Updates by kingpinzs

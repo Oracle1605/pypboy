@@ -73,7 +73,13 @@ class Engine(object):
                 self.fps_average.append(fps)
                 fps = int(statistics.mean(self.fps_average))
                 # self.screen.putchars(str(fps) + " " + str(self.fps_average), 0, 1)
-                settings.FreeRobotoB[33].render_to(self.screen, (0, 0), str(fps), settings.bright, settings.black)
+                if getattr(settings, "SHOW_FPS", True):
+                    settings.FreeRobotoB[33].render_to(
+                        self.screen, (0, 0), str(fps), settings.bright, settings.black
+                    )
+                else:
+                    # Clear previous FPS text when overlay is hidden.
+                    pygame.draw.rect(self.screen, settings.black, (0, 0, 120, 42))
 
             # Wait until frame rate hits
             if fps_delta_time < settings.fps_rate:

@@ -12,7 +12,8 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 # we might need to go up one level to find the assets
 ROOT_DIR = os.path.dirname(BASE_DIR)
 # Custom
-name = "E Winter"
+name = "Marshal North"
+
 
 # SCREEN
 WIDTH = 720
@@ -53,14 +54,14 @@ dark = (0, 40, 0)
 # MAP_FOCUS = (32.7157, 117.1611)
 # MAP_FOCUS = (-92.1943197, 38.5653437)
 # MAP_FOCUS = (-98.0878917, 30.1914818) # Zap's Hometown
-MAP_FOCUS = (-71.0594587, 42.3614408)  # Boston MA
+MAP_FOCUS = (-97.1447611, 49.8891194)  # 375 York Ave, Winnipeg, MB
 LOAD_CACHED_MAP = False
 
 # Open Strett Map settings
 WORLD_MAP_FOCUS = 0.07  # Needed to handle the 50k node limit from OSM
 
 # Google maps:
-MAP_TYPE = "hybrid"  # Select Hybrid if you want labels and roads, satellite if you want imagry only
+MAP_TYPE = "satellite"  # Select Hybrid if you want labels and roads, satellite if you want imagry only
 MAP_STYLE = "feature:all|geometry.stroke|labels.text.stroke"
 WORLD_MAP_ZOOM = 12
 LOCAL_MAP_ZOOM = 17
@@ -84,7 +85,7 @@ MODULES = {
 # MODULE_TEXT = ["RADIO","MAP","DATA","INV","STAT"]
 MODULE_TEXT = ["STAT", "INV", "DATA", "MAP", "RADIO"]
 
-STARTER_MODULE = "data"
+STARTER_MODULE = "boot"
 
 ACTIONS = {
     pygame.K_F1: "module_stats",
@@ -181,27 +182,27 @@ GPIO_ACTIONS = {
 FOOTER_RADIO = ["", "", "", "", False]
 
 SPECIAL = [
-    ["Strength", 4, "images/stats/special/strength",
+    ["Strength", 3, "images/stats/special/strength",
      "Strength is a measure of your raw physical power. It affects how much you can carry, and the damage of all melee attacks."],
-    ["Perception", 8, "images/stats/special/perception",
+    ["Perception", 6, "images/stats/special/perception",
      "Perception is your environmental awareness and 'sixth sense', and affects weapon accuracy in V.A.T.S."],
     ["Endurance", 3, "images/stats/special/endurance",
      "Endurance is a measure of your overall physical fitness. It affect your total Health and the Action Point drain from sprinting."],
-    ["Charisma", 5, "images/stats/special/charisma",
+    ["Charisma", 8, "images/stats/special/charisma",
      "Charisma is your ability to charm and convince others. It affects your success to persuade in dialogue and prices when you barter."],
-    ["Intelligence", 6, "images/stats/special/intelligence",
+    ["Intelligence", 8, "images/stats/special/intelligence",
      'Intelligence is a measure of your overall metal acuity, and affects the number of Experience Points earned'],
-    ["Agility", 3, "images/stats/special/agility",
+    ["Agility", 4, "images/stats/special/agility",
      "Agility is a measure of your overall fitnesse and reflexes. It affects the number of Action Points in V.A.T.S. and your ability to sneak"],
-    ["Luck", 3, "images/stats/special/luck",
+    ["Luck", 7, "images/stats/special/luck",
      "Luck is a measure of your general good fortune, and affects the recharge rate of Critical Hits"],
 ]
 
-STATUS_FOOTER = ["HP 90/100", "LEVEL 120", "AP 90/90", 90, True]
+STATUS_FOOTER = ["HP 955/1000", "LEVEL 48", "AP 350/350", 90, True]
 
 WEAPONS = [
-    ["10mm Pistol", "1", "images/inventory/10mmpistol", "",
-     [["Damage", 18], ["10mm", 57, ], ["Fire Rate", 46], ["Range", 83], ["Accuracy", 60], ["Weight", 3.5],
+    ["AER9 Laser Pistol", "1", "images/inventory/laserpistol", "",
+     [["Damage", 104], ["Microfusion Cells", 57, ], ["Fire Rate", 46], ["Range", 100], ["Accuracy", 80], ["Weight", 2.5],
       ["Value", 50]]],
     ["Bottle Cap Mine", "1", "images/inventory/bottlecapmine", "",
      [["Damage", 301], ["Fire Rate", 0], ["Range", 93], ["Accuracy", 0], ["Weight", 0.5], ["Value", 75]]],
@@ -219,7 +220,7 @@ WEAPONS = [
      [["Damage", 150], ["Fire Rate", 0], ["Range", 93], ["Accuracy", 0], ["Weight", 0.5], ["Value", 100]]],
 ]
 
-FOOTER_WEAPONS = ["WEIGHT 186/200", "CAPS: 35", "AMMO: 500", None, False]
+FOOTER_WEAPONS = ["WEIGHT 186/230", "CAPS: 35", "AMMO: 500", None, False]
 
 ARMOR = [
     ["Vault 111 Jumpsuit", "", "images/inventory/armor_suit", "", [["DMG Resist", 5], ["Weight", 1], ["Value", 20]]],
@@ -234,7 +235,7 @@ ARMOR = [
     ["Wedding Ring", "", "images/inventory/armor_ring", "", [["Weight", 0], ["Value", 250]]],
 ]
 
-FOOTER_ARMOR = ["WEIGHT 186/200", "CAPS: 35", "ARMOR: 50 / RADIATION: 1", None, False]
+FOOTER_ARMOR = ["WEIGHT 186/230", "CAPS: ", "ARMOR: 50 / RADIATION: 1", None, False]
 
 AID = [
     ["StimPak", 3, "images/inventory/stimpak",
@@ -245,7 +246,7 @@ AID = [
      "RadAway is an intravenous chemical solution that bonds with radioactive particles and removes them from the user's system"],
 ]
 
-FOOTER_AID = ["WEIGHT 186/200", "CAPS: 35", "HEALTH", 90, False]
+FOOTER_AID = ["WEIGHT 186/230", "CAPS: 200", "HEALTH", 995, False]
 
 MISC = [
     ["Pencil", 3, "images/inventory/pencil",
@@ -255,7 +256,7 @@ MISC = [
      "Joins this to that instantly. Will also bond fingers together faster than you can blink!"],
 ]
 
-FOOTER_MISC = ["WEIGHT 20/200", "CAPS: 1", "", None, False]
+FOOTER_MISC = ["WEIGHT 186/230", "CAPS: 200", "", None, False]
 
 AMMO = [
     ["10mm Rounds", 15, "images/inventory/10mmAmmo"],
@@ -409,6 +410,7 @@ glitch_next = 0
 # Set the target frames_per_second
 frame_per_second = 32
 fps_rate = (1/frame_per_second)
+SHOW_FPS = True
 
 # Waveform related:
 waveform_frequency = 48000  # All your OGG files should be this rate to keep things in sync
@@ -432,4 +434,3 @@ holotape_generic = "images/inventory/holotape"
 # if time_past:
 #     max_fps = int(1 / time_past)
 #     print("Holotape render took:", time_past, "max fps:", max_fps)
-

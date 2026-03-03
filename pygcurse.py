@@ -45,7 +45,9 @@ class PygcurseSurface:
         # cursor state
         self.cursorx = 0
         self.cursory = 0
-        self.cursor = (0, 0)
+
+        # track reverse-video cells; toggled by reversecolors()
+        self._reversed = [[False] * cols for _ in range(rows)]
 
         # attributes used by callers
         self._autoupdate = autoupdate
@@ -56,6 +58,19 @@ class PygcurseSurface:
         # real pygcurse stores a stack; our stub does nothing because
         # nothing in the code relies on popping the cursor back.
         pass
+
+    @property
+    def cursor(self):
+        return (self.cursorx, self.cursory)
+
+    @cursor.setter
+    def cursor(self, value):
+        try:
+            x, y = value
+        except Exception:
+            return
+        self.cursorx = max(0, min(self.cols - 1, int(x)))
+        self.cursory = max(0, min(self.rows - 1, int(y)))
 
     # drawing primitives --------------------------------------------------
     def write(self, text, x=None, y=None):
@@ -76,10 +91,32 @@ class PygcurseSurface:
                 self.cursorx = 0
                 self.cursory += 1
 
+    def putchars(self, text, x, y):
+        self.write(text, x, y)
+
     def putchar(self, ch, x, y):
         if 0 <= y < self.rows and 0 <= x < self.cols:
             self._chars[y][x] = ch
             self._render_char(ch, x, y)
+
+    def fill(self, ch=" "):
+        # pygcurse.fill() is used as "clear terminal with spaces" in this repo.
+        if not ch:
+            ch = " "
+        cell = str(ch)[0]
+        for y in range(self.rows):
+            for x in range(self.cols):
+                self._chars[y][x] = cell
+                self._reversed[y][x] = False
+                self._render_char(cell, x, y)
+
+    def reversecolors(self, rect):
+        x, y, w, h = rect
+        for j in range(y, y + h):
+            for i in range(x, x + w):
+                if 0 <= i < self.cols and 0 <= j < self.rows:
+                    self._reversed[j][i] = not self._reversed[j][i]
+                    self._render_char(self._chars[j][i], i, j)
 
     def erase(self, rect):
         x, y, w, h = rect
@@ -87,6 +124,7 @@ class PygcurseSurface:
             for i in range(x, x + w):
                 if 0 <= i < self.cols and 0 <= j < self.rows:
                     self._chars[j][i] = " "
+                    self._reversed[j][i] = False
                     self._render_char(" ", i, j)
 
     def getchars(self, rect):
@@ -101,15 +139,18 @@ class PygcurseSurface:
     def _render_char(self, ch, x, y):
         if self.windowSurface is None:
             return
+        reversed_cell = self._reversed[y][x]
+        fg = self.bgcolor if reversed_cell else self.fgcolor
+        bg = self.fgcolor if reversed_cell else self.bgcolor
         rect = pygame.Rect(
             x * self.char_width,
             y * self.char_height,
             self.char_width,
             self.char_height,
         )
-        self.windowSurface.fill(self.bgcolor, rect)
+        self.windowSurface.fill(bg, rect)
         if ch != " ":
-            text_surf = self.font.render(ch, True, self.fgcolor)
+            text_surf = self.font.render(ch, True, fg)
             self.windowSurface.blit(text_surf, (x * self.char_width, y * self.char_height))
 
     # compatibility stubs -------------------------------------------------

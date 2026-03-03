@@ -1,5 +1,5 @@
 import time
-
+import os
 import pygame
 import game
 import pypboy.ui
@@ -14,6 +14,9 @@ from pypboy.modules import map
 from pypboy.modules import radio
 
 
+MODULE_DIR = os.path.dirname(__file__)
+BASE_DIR = os.path.abspath(os.path.join(MODULE_DIR, "..", ".."))
+SOUNDS_PATH = os.path.join(BASE_DIR, "sounds", "radio")
 try:
     import RPi.GPIO as GPIO
 except (ImportError, RuntimeError):
@@ -124,6 +127,8 @@ class Pypboy(game.core.Engine):
                 settings.radio.handle_radio_event(event)
             elif event.key == pygame.K_INSERT:
                 settings.radio.handle_radio_event(event)
+            elif event.key == pygame.K_F9:
+                settings.SHOW_FPS = not getattr(settings, "SHOW_FPS", True)
             else:
                 if event.key in settings.ACTIONS:  # Check action based on key in settings
                     self.handle_action(settings.ACTIONS[event.key])

@@ -21,3 +21,9 @@ class Module(BaseModule):
         settings.hide_footer = True
         self.active.handle_action("resume")
 
+    def handle_pause(self):
+        # Avoid BaseModule.handle_pause() here: it calls switch_submodule(0),
+        # which resumes boot_text again and replays boot audio while exiting.
+        self.paused = True
+        if hasattr(self, "active") and self.active:
+            self.active.handle_action("pause")

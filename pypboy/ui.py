@@ -9,6 +9,20 @@ import io
 from datetime import datetime
 from collections import deque
 
+
+
+# Get the directory that THIS file (live_radio.py) is in
+import os
+
+# Get the absolute path to the directory where THIS file is located
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+
+# Use this to build your paths
+SOUND_PATH = os.path.join(BASE_DIR, "sounds", "pipboy", "RotaryVertical", "UI_PipBoy_RotaryVertical_01.ogg")
+
+# Then in your __init__ or wherever you set audiofolders:
+
+
 def word_wrap(surf, text, font):
     text = str(text)
     font.origin = True
@@ -119,7 +133,7 @@ class Scanlines(game.core.Entity):
         super(Scanlines, self).__init__((settings.WIDTH, 129))
         # self.width = 720
         # self.height = 1600
-        self.image = pygame.image.load('images/scanline.png').convert_alpha()
+        self.image = pygame.image.load(os.path.join(settings.ROOT_DIR, 'images', 'scanline.png')).convert_alpha()
         self.rectimage = self.image.get_rect()
         self.rect[1] = 0
         self.top = -130
@@ -154,7 +168,7 @@ class Scanlines(game.core.Entity):
 class Overlay(game.Entity):
     def __init__(self):
         super(Overlay, self).__init__()
-        self.image = pygame.image.load('images/overlay.png').convert_alpha()
+        self.image = pygame.image.load(os.path.join(settings.ROOT_DIR, 'images', 'overlay.png')).convert_alpha()
 
 
 class SubMenu(game.Entity):
@@ -416,7 +430,7 @@ class Menu(game.Entity):
         self.descriptionbox = pygame.Surface((360, 300))
         self.imagebox = pygame.Surface((240, 240))
 
-        self.saved_selection = 0
+        self.saved_selection = None
 
         try:
             self.callbacks = callbacks
@@ -424,7 +438,7 @@ class Menu(game.Entity):
         except:
             self.callbacks = []
 
-        self.arrow_img_up = load_svg("./images/inventory/arrow.svg", 26, 26)
+        self.arrow_img_up = load_svg(os.path.join(settings.ROOT_DIR, "images", "inventory", "arrow.svg"), 26, 26)
         self.arrow_img_down = pygame.transform.flip(self.arrow_img_up, False, True)
 
         self.selected = selected
@@ -486,10 +500,14 @@ class Menu(game.Entity):
                 text = settings.RobotoB[30].render(" %s " % self.menu_array[i][0], True, (0, 0, 0),
                                                    (settings.bright))
                 try:
-                    number = settings.RobotoB[30].render(" %s " % self.menu_array[i][1], True, (0, 0, 0),
-                                                         (settings.bright))
+                    number_value = str(self.menu_array[i][1]).strip()
+                    if number_value:
+                        number = settings.RobotoB[30].render(" %s " % number_value, True, (0, 0, 0),
+                                                             (settings.bright))
+                    else:
+                        number = None
                 except:
-                    number = ""
+                    number = None
 
                 selected_rect = (0, offset, settings.menu_x + 330, text.get_size()[1])
                 pygame.draw.rect(self.image, (settings.bright), selected_rect)
@@ -497,41 +515,37 @@ class Menu(game.Entity):
                 self.images = []
                 try:  # Try loading a image if there is one
                     self.image_url = self.menu_array[i][2]
-                    if os.path.isdir(self.image_url):
-                        for filename in sorted(os.listdir(self.image_url)):
-                            full_path = os.path.join(self.image_url, filename) # Use safe pathing
-                        
-                        if filename.endswith(".png"):
-                            self.images.append(pygame.image.load(full_path).convert_alpha())
+                    if self.image_url:
+                        image_path = os.path.join(settings.ROOT_DIR, self.image_url)
+                        if os.path.isdir(image_path):
                             self.frameorder = []
-                            
-                        elif filename.endswith(".svg"):
-                            svg_surface = load_svg(full_path, self.imagebox.get_width(),
-                                                 self.imagebox.get_height())
-                            self.images.append(svg_surface)
-                            self.frameorder = []
-                            
-                        elif filename == "frameorder.py":
-                            # --- MODERN IMPORTLIB REPLACEMENT FOR IMP ---
-                            import importlib.util
-                            spec = importlib.util.spec_from_file_location("frameorder", full_path)
-                            module = importlib.util.module_from_spec(spec)
-                            spec.loader.exec_module(module)
-                            # --------------------------------------------
-                            
-                            self.frameorder = module.frameorder
-                            self.frame = 0
-                    else:
-                        if self.image_url:
+                            for filename in sorted(os.listdir(image_path)):
+                                full_path = os.path.join(image_path, filename)
+                                if filename.endswith(".png"):
+                                    self.images.append(pygame.image.load(full_path).convert_alpha())
+                                elif filename.endswith(".svg"):
+                                    svg_surface = load_svg(full_path, self.imagebox.get_width(),
+                                                         self.imagebox.get_height())
+                                    self.images.append(svg_surface)
+                                elif filename == "frameorder.py":
+                                    # --- MODERN IMPORTLIB REPLACEMENT FOR IMP ---
+                                    import importlib.util
+                                    spec = importlib.util.spec_from_file_location("frameorder", full_path)
+                                    module = importlib.util.module_from_spec(spec)
+                                    spec.loader.exec_module(module)
+                                    # --------------------------------------------
+                                    self.frameorder = module.frameorder
+                                    self.frame = 0
+                        else:
                             self.frameorder = []
                             # self.imagebox.fill(settings.black)
-                            if self.image_url.endswith(".svg"):
-                                graphic = load_svg(self.image_url, self.imagebox.get_width(),
+                            if image_path.endswith(".svg"):
+                                graphic = load_svg(image_path, self.imagebox.get_width(),
                                                    self.imagebox.get_height())
                                 self.imagebox.blit(graphic, (0, 0))
                                 self.image.blit(self.imagebox, (400, 0))
                             else:
-                                graphic = pygame.image.load(self.image_url).convert_alpha()
+                                graphic = pygame.image.load(image_path).convert_alpha()
                                 self.image.blit(graphic, (0, 0))
 
 
@@ -575,8 +589,12 @@ class Menu(game.Entity):
                 text = settings.RobotoB[30].render(" %s " % self.menu_array[i][0], True, (settings.bright),
                                                    (0, 0, 0))
                 try:
-                    number = settings.RobotoB[30].render(" %s " % self.menu_array[i][1], True, (settings.bright),
-                                                         (0, 0, 0))
+                    number_value = str(self.menu_array[i][1]).strip()
+                    if number_value:
+                        number = settings.RobotoB[30].render(" %s " % number_value, True, (settings.bright),
+                                                             (0, 0, 0))
+                    else:
+                        number = None
                 except:
                     number = None
 
@@ -605,7 +623,7 @@ class Menu(game.Entity):
             self.saved_selection = self.selected
 
         elif not settings.hide_main_menu:
-            if self.saved_selection:
+            if self.saved_selection is not None:
                 self.select(self.saved_selection)
                 self.saved_selection = None
 

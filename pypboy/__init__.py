@@ -22,6 +22,7 @@ import pygame
 import game
 import pypboy.ui
 import settings
+import os
 from enum import Enum
 
 
@@ -67,7 +68,7 @@ class BaseModule(game.EntityGroup):
         self.switch_submodule(0)
 
         if settings.SOUND_ENABLED:
-            self.module_change_sfx = pygame.mixer.Sound('sounds/pipboy/UI_Pipboy_OK.ogg')
+            self.module_change_sfx = pygame.mixer.Sound(os.path.join(settings.ROOT_DIR, 'sounds', 'pipboy', 'UI_Pipboy_OK.ogg'))
             self.module_change_sfx.set_volume(settings.VOLUME)
 
     def move(self, x, y):
@@ -139,8 +140,22 @@ class SubModule(game.EntityGroup):
         }
 
         if settings.SOUND_ENABLED:
-            self.submodule_change_sfx = pygame.mixer.Sound('sounds/pipboy/UI_Pipboy_OK.ogg')
+            self.submodule_change_sfx = pygame.mixer.Sound(os.path.join(settings.ROOT_DIR, 'sounds', 'pipboy', 'UI_Pipboy_OK.ogg'))
             self.submodule_change_sfx.set_volume(settings.VOLUME)
+
+    def add(self, *sprites):
+        # Keep BaseModule's drawn sprite set in sync with dynamic changes that
+        # happen inside an already-selected submodule (e.g. holotape playback view).
+        super(SubModule, self).add(*sprites)
+        parent = getattr(self, "parent", None)
+        if parent is not None and getattr(parent, "active", None) is self:
+            parent.add(*sprites)
+
+    def remove(self, *sprites):
+        super(SubModule, self).remove(*sprites)
+        parent = getattr(self, "parent", None)
+        if parent is not None and getattr(parent, "active", None) is self:
+            parent.remove(*sprites)
 
     def handle_action(self, action, value=0):
         if action.startswith("dial_"):
