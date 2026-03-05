@@ -1,27 +1,45 @@
 #!/usr/bin/python3
 import sys
+import types
 from unittest.mock import MagicMock
 
-# 1. Create a dummy GPIO module in memory
-mock_gpio = MagicMock()
-# Add the constants the code expects to find
-mock_gpio.BCM = 11
-mock_gpio.OUT = 0
-mock_gpio.IN = 1
-mock_gpio.HIGH = 1
-mock_gpio.LOW = 0
-mock_gpio.PUD_UP = 20
-mock_gpio.PUD_DOWN = 21
+def _install_hardware_mocks():
+    mock_gpio = MagicMock()
+    mock_gpio.BCM = 11
+    mock_gpio.OUT = 0
+    mock_gpio.IN = 1
+    mock_gpio.HIGH = 1
+    mock_gpio.LOW = 0
+    mock_gpio.PUD_UP = 20
+    mock_gpio.PUD_DOWN = 21
 
-# 2. Inject it into the system modules
-sys.modules["RPi.GPIO"] = mock_gpio
-sys.modules["smbus"] = MagicMock() # Often used for Pi-specific screens
+    mock_rpi_pkg = types.ModuleType("RPi")
+    mock_rpi_pkg.GPIO = mock_gpio
+    sys.modules["RPi"] = mock_rpi_pkg
+    sys.modules["RPi.GPIO"] = mock_gpio
+    sys.modules["smbus"] = MagicMock()  # Often used for Pi-specific screens
 
-print("--- Hardware Emulation Active: GPIO and SMBus Mocked ---")
+    return mock_gpio
+
+
+try:
+    import RPi.GPIO as GPIO
+    GPIO_AVAILABLE = True
+    print("--- Hardware Mode Active: Using real RPi.GPIO ---")
+except (ImportError, RuntimeError):
+    GPIO = _install_hardware_mocks()
+    GPIO_AVAILABLE = False
+    print("--- Hardware Emulation Active: GPIO and SMBus Mocked ---")
+except Exception:
+    _, err, _ = sys.exc_info()
+    GPIO = _install_hardware_mocks()
+    GPIO_AVAILABLE = False
+    print("GPIO UNAVAILABLE (%s) -> using mocks" % err)
 
 import pygame
 import optparse
 import sys
+import os
 import settings
 # pygcurse is provided by a lightweight local stub; no external package required
 import pygcurse
@@ -33,29 +51,7 @@ parser.add_option('-c','--cached-map', action="store_true", help="Loads the cach
 parser.add_option('--autoplay-system', action="store_true", help="Automatically load and play the System Test holotape on startup", dest="autoplay", default=False)
 options, args = parser.parse_args()
 
-try:
-    import RPi.GPIO as GPIO
-except (ImportError, RuntimeError):
-    # Mock GPIO class for non-Pi systems
-    class GPIO_Mock:
-        BOARD = BCM = IN = OUT = HIGH = LOW = PUD_UP = PUD_DOWN = 0
-        def setmode(self, *args): pass
-        def setup(self, *args, **kwargs): pass
-        def output(self, *args): pass
-        def input(self, *args): return 0
-        def cleanup(self): pass
-        def add_event_detect(self, *args, **kwargs): pass
-    GPIO = GPIO_Mock()
-    print("Running in non-Pi mode: GPIO disabled.")
-    # GPIO.setmode(GPIO.BCM)
-    settings.GPIO_AVAILABLE = True
-except Exception:
-    _, err, _ = sys.exc_info()
-    print("GPIO UNAVAILABLE (%s)" % err)
-    settings.GPIO_AVAILABLE = False
-
-if settings.GPIO_AVAILABLE:
-    pass
+settings.GPIO_AVAILABLE = GPIO_AVAILABLE
 
 try:
     # larger buffer reduces stuttering on slower disks/CPUs
@@ -69,6 +65,17 @@ from pypboy.core import Pypboy
 if __name__ == "__main__":
     boy = Pypboy('Pip-Boy 3000 MK IV', settings.WIDTH, settings.HEIGHT)
     print("RUN")
+    fps_mode = "uncapped" if settings.fps_rate == 0 else f"capped@{settings.frame_per_second}"
+    print(
+        "[DEV] gpio_available=%s sound_enabled=%s fps_mode=%s cwd=%s root=%s"
+        % (
+            settings.GPIO_AVAILABLE,
+            settings.SOUND_ENABLED,
+            fps_mode,
+            os.getcwd(),
+            settings.ROOT_DIR,
+        )
+    )
 
     # optionally autoplay the System Test holotape for diagnostics
     if options.autoplay and "data" in boy.modules:
@@ -82,7 +89,7 @@ if __name__ == "__main__":
             # pick the first holotape that actually contains audio files; the
             # previous implementation hard-coded "System_Calibration" which
             # meant autoplay always loaded the same tape and ignored others.
-            import glob, os
+            import glob
 
             for i, tape in enumerate(hol_mod.holotapes):
                 base = os.path.abspath(

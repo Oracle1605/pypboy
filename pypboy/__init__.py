@@ -1,22 +1,33 @@
 import sys
+import types
 from unittest.mock import MagicMock
 
-# 1. Create a dummy GPIO module in memory
-mock_gpio = MagicMock()
-# Add the constants the code expects to find
-mock_gpio.BCM = 11
-mock_gpio.OUT = 0
-mock_gpio.IN = 1
-mock_gpio.HIGH = 1
-mock_gpio.LOW = 0
-mock_gpio.PUD_UP = 20
-mock_gpio.PUD_DOWN = 21
+def _install_hardware_mocks():
+    mock_gpio = MagicMock()
+    mock_gpio.BCM = 11
+    mock_gpio.OUT = 0
+    mock_gpio.IN = 1
+    mock_gpio.HIGH = 1
+    mock_gpio.LOW = 0
+    mock_gpio.PUD_UP = 20
+    mock_gpio.PUD_DOWN = 21
 
-# 2. Inject it into the system modules
-sys.modules["RPi.GPIO"] = mock_gpio
-sys.modules["smbus"] = MagicMock() # Often used for Pi-specific screens
+    mock_rpi_pkg = types.ModuleType("RPi")
+    mock_rpi_pkg.GPIO = mock_gpio
+    sys.modules["RPi"] = mock_rpi_pkg
+    sys.modules["RPi.GPIO"] = mock_gpio
+    sys.modules["smbus"] = MagicMock()  # Often used for Pi-specific screens
 
-print("--- Hardware Emulation Active: GPIO and SMBus Mocked ---")
+
+try:
+    import RPi.GPIO as _GPIO  # noqa: F401
+except (ImportError, RuntimeError):
+    _install_hardware_mocks()
+    print("--- Hardware Emulation Active: GPIO and SMBus Mocked ---")
+except Exception:
+    _install_hardware_mocks()
+    _, err, _ = sys.exc_info()
+    print("GPIO UNAVAILABLE (%s) -> using mocks" % err)
 
 import pygame
 import game
