@@ -1,16 +1,8 @@
 # pypboy
 
-> _Notes from ZapWizard:_
+> Notes from Oracle1605
 >
-> This is a work in progress of the code for my Functional Pip-Boy 3000 MK IV.
->
-> I branched off from the Fallout 3 style Pip-Boy 3000 code.
-> The graphics are positioned for a 720x720 display.
-
-> _Notes from Oracle1605
->
->This is going to end up being a complete rewrite, but given that i am a rank amateur it will take a LONG while, assume the instructions work until they dont.
->I will rewrite the read me as the software gets closer to completion. 
+>Alright so everything **should** be working feature wise, the menus are navigable, holotape proccesor is working, map is positionable, radio works, GPIO detection allows the device to automatically boot into raspPi mode if its loaded in the RPI distro which is cool and everything is working directory agnostic now so you can run it from wherever and itll start up ! 
 
 ## Installation
 
@@ -86,6 +78,9 @@ pi@XXXX:~/Downloads/pypboy $
 ```
 
 ## Authors
+
+- Additional Major Overhaul by Oracle1605 contininung ZapWizard's work towards a functional physical pipboy.
+- genuinely Zap if you see this thank you, truly. 
 
 - Major overhaul by ZapWizard for the Functional Pip-Boy 3000 MK IV GUI
 
