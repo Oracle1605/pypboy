@@ -98,12 +98,14 @@ class Animation(game.Entity):
         self.prev_time = 0
         self.prev_fps_time = 0
 
-        path = "./images/stats/legs1"
+        path = os.path.join(settings.ROOT_DIR, "images", "stats", "legs1")
         for f in  sorted(os.listdir(path)):
             if f.endswith(".png"):
-                image = pygame.image.load(path + "/" + f).convert_alpha()
+                image = pygame.image.load(os.path.join(path, f)).convert_alpha()
                 self.images.append(image)
-        self.head = pygame.image.load("images/stats/head1/1.png").convert_alpha()
+        self.head = pygame.image.load(
+            os.path.join(settings.ROOT_DIR, "images", "stats", "head1", "1.png")
+        ).convert_alpha()
 
     def render(self, *args, **kwargs):
 
@@ -157,12 +159,30 @@ class Health(game.Entity):
         pygame.draw.rect(self.image, settings.dim, (483, 358, 38, 62)) #Radiation box
 
         # Icons
-        self.image.blit(pygame.image.load('images/stats/gun.png').convert_alpha(),(210,374))
-        self.image.blit(pygame.image.load('images/stats/reticle.png').convert_alpha(),(284,363))
-        self.image.blit(pygame.image.load('images/stats/helmet.png').convert_alpha(),(338,373))
-        self.image.blit(pygame.image.load('images/stats/shield.png').convert_alpha(),(410,362))
-        self.image.blit(pygame.image.load('images/stats/bolt.png').convert_alpha(),(453,362))
-        self.image.blit(pygame.image.load('images/stats/radiation.png').convert_alpha(),(491,363))
+        self.image.blit(
+            pygame.image.load(os.path.join(settings.ROOT_DIR, "images", "stats", "gun.png")).convert_alpha(),
+            (210,374),
+        )
+        self.image.blit(
+            pygame.image.load(os.path.join(settings.ROOT_DIR, "images", "stats", "reticle.png")).convert_alpha(),
+            (284,363),
+        )
+        self.image.blit(
+            pygame.image.load(os.path.join(settings.ROOT_DIR, "images", "stats", "helmet.png")).convert_alpha(),
+            (338,373),
+        )
+        self.image.blit(
+            pygame.image.load(os.path.join(settings.ROOT_DIR, "images", "stats", "shield.png")).convert_alpha(),
+            (410,362),
+        )
+        self.image.blit(
+            pygame.image.load(os.path.join(settings.ROOT_DIR, "images", "stats", "bolt.png")).convert_alpha(),
+            (453,362),
+        )
+        self.image.blit(
+            pygame.image.load(os.path.join(settings.ROOT_DIR, "images", "stats", "radiation.png")).convert_alpha(),
+            (491,363),
+        )
 
         # Health Bars
         pygame.draw.line(self.image, settings.bright, (344, 32), (379, 32), 9)

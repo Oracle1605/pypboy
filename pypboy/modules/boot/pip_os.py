@@ -9,6 +9,7 @@ import settings
 import pypboy.ui
 import pypboy.core
 import time
+import os
 
 
 class Module(pypboy.SubModule):
@@ -25,7 +26,15 @@ class Module(pypboy.SubModule):
         self.pipos.y = 0
         self.add(self.pipos)
         if settings.SOUND_ENABLED:
-            self.sound = pygame.mixer.Sound('sounds/pipboy/BootSequence/UI_PipBoy_BootSequence_B.ogg')
+            self.sound = pygame.mixer.Sound(
+                os.path.join(
+                    settings.ROOT_DIR,
+                    "sounds",
+                    "pipboy",
+                    "BootSequence",
+                    "UI_PipBoy_BootSequence_B.ogg",
+                )
+            )
             self.sound.set_volume(settings.VOLUME)
 
     def handle_pause(self):

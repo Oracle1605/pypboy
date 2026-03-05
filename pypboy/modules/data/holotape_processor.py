@@ -29,7 +29,7 @@ class Module(pypboy.SubModule):
     def __init__(self, *args, **kwargs):
         super(Module, self).__init__(*args, **kwargs)
 
-        self.holotape_folder = 'holotapes/'
+        self.holotape_folder = os.path.join(settings.ROOT_DIR, "holotapes")
         self.holotapes = []
         self.main_menu = []
         self.holotapes_data_set = []
@@ -121,10 +121,9 @@ class Module(pypboy.SubModule):
         if not files or start_index >= len(files):
             return
         queue = files[start_index:]
-        rels = [os.path.relpath(f, os.getcwd()) for f in queue]
-        print("Now Playing:", os.path.abspath(rels[0]))
+        print("Now Playing:", os.path.abspath(queue[0]))
         if hasattr(self.active_holotape, 'load_audio_file'):
-            self.active_holotape.load_audio_file(rels)
+            self.active_holotape.load_audio_file(queue)
 
     def select_holotape(self, holotape):
         print(f"select_holotape called with index {holotape}")
@@ -221,9 +220,7 @@ class Module(pypboy.SubModule):
                 # gather audio files first so we know whether we'll need a
                 # track‑selector.  delays hiding the main menu until after the
                 # selection completes or is skipped.
-                base = os.path.abspath(
-                    os.path.join(os.path.dirname(__file__), '..', '..', '..', 'holotapes', self.active_holotape.directory)
-                )
+                base = os.path.join(settings.ROOT_DIR, "holotapes", self.active_holotape.directory)
                 audio_entries = []
                 if os.path.isdir(base):
                     audio_entries = self._get_audio_list(base)
@@ -388,16 +385,17 @@ class Module(pypboy.SubModule):
         folder_name = None
 
         for f in sorted(os.listdir(self.holotape_folder)):
-            if not f.endswith("/"):
-                folders.append(self.holotape_folder + f)
+            folder_path = os.path.join(self.holotape_folder, f)
+            if os.path.isdir(folder_path):
+                folders.append(folder_path)
 
         for folder in folders:
             holotape_page_data = []
             folder_name = os.path.basename(folder)  # Get the folder name without the full path
-            if len(glob.glob(folder + "/holotape.xml")) == 0:
+            if len(glob.glob(os.path.join(folder, "holotape.xml"))) == 0:
                 print("No holotape.xml file in:", folder)
                 continue
-            menu_file = ("./" + folder + "/" + "holotape.xml")
+            menu_file = os.path.join(folder, "holotape.xml")
 
             try:
                 holotape_xml = ET.parse(menu_file).getroot()
@@ -529,11 +527,23 @@ class HolotapeDisplay(game.Entity):
         self.waveform_paused_total = 0.0
 
         if settings.SOUND_ENABLED:
-            self.sfx_dial_move = pygame.mixer.Sound('./sounds/pipboy/RotaryVertical/UI_PipBoy_RotaryVertical_01.ogg')
+            self.sfx_dial_move = pygame.mixer.Sound(
+                os.path.join(
+                    settings.ROOT_DIR,
+                    "sounds",
+                    "pipboy",
+                    "RotaryVertical",
+                    "UI_PipBoy_RotaryVertical_01.ogg",
+                )
+            )
             self.sfx_dial_move.set_volume(settings.VOLUME)
-            self.sfx_text = pygame.mixer.Sound('./sounds/terminal/UI_Terminal_CharScroll_LP.ogg')
+            self.sfx_text = pygame.mixer.Sound(
+                os.path.join(settings.ROOT_DIR, "sounds", "terminal", "UI_Terminal_CharScroll_LP.ogg")
+            )
             self.sfx_text.set_volume(settings.VOLUME / 3)
-            self.sfx_ok = pygame.mixer.Sound('./sounds/pipboy/UI_Pipboy_OK_Press.ogg')
+            self.sfx_ok = pygame.mixer.Sound(
+                os.path.join(settings.ROOT_DIR, "sounds", "pipboy", "UI_Pipboy_OK_Press.ogg")
+            )
             self.sfx_ok.set_volume(settings.VOLUME)
 
         self.font = settings.TechMono[25]
@@ -1001,8 +1011,7 @@ class HolotapeDisplay(game.Entity):
             trace = ''.join(traceback.format_stack(limit=10))
             _log(f"queue load invoked, stack:\n{trace}")
             # make each path absolute too (same base as single-file case)
-            base = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', '..'))
-            queue = [os.path.normpath(os.path.join(base, f)) if not os.path.isabs(f) else f for f in file]
+            queue = [os.path.normpath(os.path.join(settings.ROOT_DIR, f)) if not os.path.isabs(f) else f for f in file]
             # store the list
             self.audio_queue = queue
             self.current_track_index = 0
@@ -1011,11 +1020,8 @@ class HolotapeDisplay(game.Entity):
             return
 
         # make path absolute relative to project root if necessary
-        # ``holotapes`` sits next to the top-level ``pypboy`` package, so we
-        # need to climb three levels from this module file to reach it.
         if file and not os.path.isabs(file):
-            base = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', '..'))
-            file = os.path.normpath(os.path.join(base, file))
+            file = os.path.normpath(os.path.join(settings.ROOT_DIR, file))
 
         # handle single audio file path
         if file and isinstance(file, str) and file.lower().endswith(".ogg"):
@@ -1221,7 +1227,7 @@ class HolotapeDisplay(game.Entity):
                         msg = f"Found audio file: {action}"
                         print(msg)
                         _log(msg)
-                        self.load_audio_file("holotapes/" + self.directory + "/" + action)
+                        self.load_audio_file(os.path.join(settings.ROOT_DIR, "holotapes", self.directory, action))
                     elif action == "Exit":
                         settings.hide_top_menu = False
                         settings.hide_submenu = False
@@ -1300,7 +1306,7 @@ class HolotapeDisplay(game.Entity):
                         msg = f"Found audio file: {action}"
                         print(msg)
                         _log(msg)
-                        self.load_audio_file("holotapes/" + self.directory + "/" + action)
+                        self.load_audio_file(os.path.join(settings.ROOT_DIR, "holotapes", self.directory, action))
                     elif action == "Exit":
                         settings.hide_top_menu = False
                         settings.hide_submenu = False
@@ -1385,12 +1391,30 @@ class Health(game.Entity):
         pygame.draw.rect(self.image, settings.dim, (483, 358, 38, 62))  # Radiation box
 
         # Icons
-        self.image.blit(pygame.image.load('images/stats/gun.png').convert_alpha(), (210, 374))
-        self.image.blit(pygame.image.load('images/stats/reticle.png').convert_alpha(), (284, 363))
-        self.image.blit(pygame.image.load('images/stats/helmet.png').convert_alpha(), (338, 373))
-        self.image.blit(pygame.image.load('images/stats/shield.png').convert_alpha(), (410, 362))
-        self.image.blit(pygame.image.load('images/stats/bolt.png').convert_alpha(), (453, 362))
-        self.image.blit(pygame.image.load('images/stats/radiation.png').convert_alpha(), (491, 363))
+        self.image.blit(
+            pygame.image.load(os.path.join(settings.ROOT_DIR, "images", "stats", "gun.png")).convert_alpha(),
+            (210, 374),
+        )
+        self.image.blit(
+            pygame.image.load(os.path.join(settings.ROOT_DIR, "images", "stats", "reticle.png")).convert_alpha(),
+            (284, 363),
+        )
+        self.image.blit(
+            pygame.image.load(os.path.join(settings.ROOT_DIR, "images", "stats", "helmet.png")).convert_alpha(),
+            (338, 373),
+        )
+        self.image.blit(
+            pygame.image.load(os.path.join(settings.ROOT_DIR, "images", "stats", "shield.png")).convert_alpha(),
+            (410, 362),
+        )
+        self.image.blit(
+            pygame.image.load(os.path.join(settings.ROOT_DIR, "images", "stats", "bolt.png")).convert_alpha(),
+            (453, 362),
+        )
+        self.image.blit(
+            pygame.image.load(os.path.join(settings.ROOT_DIR, "images", "stats", "radiation.png")).convert_alpha(),
+            (491, 363),
+        )
 
         # Health Bars
         pygame.draw.line(self.image, settings.bright, (344, 32), (379, 32), 9)

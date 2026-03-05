@@ -14,7 +14,7 @@ class Module(pypboy.SubModule):
     def __init__(self, *args, **kwargs):
         super(Module, self).__init__(*args, **kwargs)
 
-        self.holotape_folder = 'holotapes/'
+        self.holotape_folder = os.path.join(settings.ROOT_DIR, "holotapes")
         self.holotapes = []
         self.main_menu = []
         self.holotapes_data_set = []
@@ -75,16 +75,17 @@ class Module(pypboy.SubModule):
         folder_name = None
 
         for f in sorted(os.listdir(self.holotape_folder)):
-            if not f.endswith("/"):
-                folders.append(self.holotape_folder + f)
+            folder_path = os.path.join(self.holotape_folder, f)
+            if os.path.isdir(folder_path):
+                folders.append(folder_path)
 
         for folder in folders:
             holotape_page_data = []
             folder_name = os.path.basename(folder)  # Get the folder name without the full path
-            if len(glob.glob(folder + "/holotape.xml")) == 0:
+            if len(glob.glob(os.path.join(folder, "holotape.xml"))) == 0:
                 print("No holotape.xml file in:", folder)
                 continue
-            menu_file = ("./" + folder + "/" + "holotape.xml")
+            menu_file = os.path.join(folder, "holotape.xml")
 
             try:
                 holotape_xml = ET.parse(menu_file).getroot()
@@ -333,5 +334,4 @@ class HolotapeClass(HolotapeDisplay):
         # holotape_data[3].append(holotape_display_page)
 
         self.holotape_data = holotape_data
-
 

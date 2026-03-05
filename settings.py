@@ -330,6 +330,10 @@ else:
 
 print(f"--- Pypboy is loading assets from: {ROOT_DIR} ---")
 
+
+def resource_path(*parts):
+    return os.path.join(ROOT_DIR, *parts)
+
 # --- PI DETECTION ---
 PI = False
 
@@ -384,8 +388,9 @@ hide_footer = False
 
 
 def save_settings():
-    file = open("saved.py", "w")
-    file.write("SAVED_VOLUME = " + str(VOLUME) + "\n" + "SAVED_STATION = " + str(STATION))
+    saved_path = getattr(saved, "__file__", resource_path("saved.py"))
+    with open(saved_path, "w", encoding="utf-8") as file:
+        file.write("SAVED_VOLUME = " + str(VOLUME) + "\n" + "SAVED_STATION = " + str(STATION))
     print("exiting", "SAVED_VOLUME = ", str(VOLUME), "SAVED_STATION = ", str(STATION))
 
 

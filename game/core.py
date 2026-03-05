@@ -1,4 +1,3 @@
-import statistics
 from collections import deque
 
 import pygame
@@ -46,48 +45,48 @@ class Engine(object):
         self.current_time= time.time()
         self.delta_time = self.current_time - self.prev_time
 
-        if self.delta_time >= settings.fps_rate:
-            self.prev_time = self.current_time
+        if self.delta_time < settings.fps_rate:
+            # Prevent hot-looping between frames on slower/low-power CPUs.
+            wait_ms = int((settings.fps_rate - self.delta_time) * 1000)
+            if wait_ms > 0:
+                pygame.time.wait(wait_ms)
+            return
 
-            self.root_persitant.clear(self.screen, self.background) #Remove background from render queue?
-            self.root_persitant.render()
-            self.root_persitant.draw(self.screen)
-            for group in self.groups:
-                group.render()
-                group.draw(self.screen)
+        self.prev_time = self.current_time
 
-            # if hasattr(self, 'active'):
-            #     self.active.render()
+        self.root_persitant.clear(self.screen, self.background) #Remove background from render queue?
+        self.root_persitant.render()
+        self.root_persitant.draw(self.screen)
+        for group in self.groups:
+            group.render()
+            group.draw(self.screen)
 
-            current_time = time.time()
-            fps_delta_time = current_time - self.prev_fps_time
-            self.prev_fps_time = current_time
+        # if hasattr(self, 'active'):
+        #     self.active.render()
 
-            #  FPS debugging
-            if fps_delta_time:
-                fps = int(1 / fps_delta_time)
+        current_time = time.time()
+        fps_delta_time = current_time - self.prev_fps_time
+        self.prev_fps_time = current_time
 
-                if len(self.fps_average) > 6:
-                    self.fps_average.popleft()
-                    # self.fps_average.pop()
-                self.fps_average.append(fps)
-                fps = int(statistics.mean(self.fps_average))
-                # self.screen.putchars(str(fps) + " " + str(self.fps_average), 0, 1)
-                if getattr(settings, "SHOW_FPS", True):
-                    settings.FreeRobotoB[33].render_to(
-                        self.screen, (0, 0), str(fps), settings.bright, settings.black
-                    )
-                else:
-                    # Clear previous FPS text when overlay is hidden.
-                    pygame.draw.rect(self.screen, settings.black, (0, 0, 120, 42))
+        #  FPS debugging
+        if fps_delta_time:
+            fps = int(1 / fps_delta_time)
 
-            # Wait until frame rate hits
-            if fps_delta_time < settings.fps_rate:
-                wait = int(1000 * settings.fps_rate - fps_delta_time)
-                # print("Waiting for", wait, fps_delta_time)
-                pygame.time.wait(wait)
+            if len(self.fps_average) > 6:
+                self.fps_average.popleft()
+                # self.fps_average.pop()
+            self.fps_average.append(fps)
+            fps = sum(self.fps_average) // len(self.fps_average)
+            # self.screen.putchars(str(fps) + " " + str(self.fps_average), 0, 1)
+            if getattr(settings, "SHOW_FPS", True):
+                settings.FreeRobotoB[33].render_to(
+                    self.screen, (0, 0), str(fps), settings.bright, settings.black
+                )
+            else:
+                # Clear previous FPS text when overlay is hidden.
+                pygame.draw.rect(self.screen, settings.black, (0, 0, 120, 42))
 
-            pygame.display.flip()
+        pygame.display.flip()
 
     def add(self, group):
         if group not in self.groups:

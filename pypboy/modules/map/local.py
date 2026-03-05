@@ -8,6 +8,7 @@ import threading
 import io
 import numpy as np
 import urllib
+import os
 
 # def load_svg(filename, width, height):
 #     drawing = cairosvg.svg2png(url = filename)
@@ -81,8 +82,6 @@ class Module(pypboy.SubModule):
         self.mapgrid.rect[1] = self.map_top_edge
 
 class Map(game.Entity):
-    _mapper = None
-    _transposed = None
     _size = 0
     _fetching = None
     _map_surface = None
@@ -94,15 +93,26 @@ class Map(game.Entity):
         self._size = width
         self._map_surface = pygame.Surface((width, height))
         self._render_rect = render_rect
+        self._cache_file = os.path.join(settings.ROOT_DIR, "localMap.cache")
+        self._last_request = None
+        self._player_marker = pygame.image.load(
+            os.path.join(settings.ROOT_DIR, "images", "map_icons", "Player_Marker.svg")
+        ).convert_alpha()
+        self._player_marker.fill(settings.bright, None, pygame.BLEND_RGBA_MULT)
         text = settings.RobotoB[14].render(loading_type, True, settings.bright, (0, 0, 0))
         self.image.blit(text, (10, 10))
 
     def fetch_map(self, position, zoom, width, height, map_type):
-        self._fetching = threading.Thread(target=self._internal_fetch_map, args=(position, zoom, width, height, map_type))
+        self._last_request = (position, zoom, width, height, map_type)
+        self._fetching = threading.Thread(
+            target=self._internal_fetch_map,
+            args=(position, zoom, width, height, map_type),
+            daemon=True,
+        )
         self._fetching.start()
 
     def _internal_fetch_map(self, position, zoom, width, height, map_type):
-        self.map_image = None
+        map_image = None
         lat = str(position[0])
         long = str(position[1])
         url = ("https://maps.googleapis.com/maps/api/staticmap?center=" + long + "," + lat +
@@ -123,27 +133,26 @@ class Map(game.Entity):
         print("Loading map image from:" + url)
 
         try:
-            r = requests.get(url)
+            r = requests.get(url, timeout=10)
+            r.raise_for_status()
             map_image = io.BytesIO(r.content)
-        except:
-            print ("Failed to load map image")
+            with open(self._cache_file, "wb") as cache_file:
+                cache_file.write(r.content)
+        except Exception as exc:
+            print("Failed to load map image:", exc)
         if map_image:
             map_surf = pygame.image.load(map_image).convert()  # byte image to -> Surface
-
 
             arr = pygame.surfarray.pixels3d(map_surf)
             mean_arr = np.dot(arr[:, :, :], [0.216, 0.587, 0.144])
             mean_arr3d = mean_arr[..., np.newaxis]
             new_arr = np.repeat(mean_arr3d[:, :, :], 3, axis=2)
-            map_surf = pygame.surfarray.make_surface(arr)
+            map_surf = pygame.surfarray.make_surface(new_arr.astype(np.uint8))
 
             map_surf.fill((0, 230, 0), None, pygame.BLEND_RGBA_MULT)
             self._map_surface.blit(map_surf, (0, 0))
 
-            # svg_surface = load_svg("./images/map_icons/Player_Marker.svg", 40, 40)
-            svg_surface = pygame.image.load("./images/map_icons/Player_Marker.svg").convert_alpha()
-            svg_surface.fill(settings.bright, None, pygame.BLEND_RGBA_MULT)
-            self._map_surface.blit(svg_surface, (settings.WIDTH / 2 - 20, self._render_rect.centery - 20))
+            self._map_surface.blit(self._player_marker, (settings.WIDTH / 2 - 20, self._render_rect.centery - 20))
 
         else:
             print("No map image")
@@ -151,13 +160,37 @@ class Map(game.Entity):
         self.redraw_map()
 
 
-    def load_map(self, position, zoom, isWorld):
-        self._fetching = threading.Thread(target=self._internal_load_map, args=(position, zoom, isWorld))
+    def load_map(self, position, zoom, width, height, map_type):
+        self._last_request = (position, zoom, width, height, map_type)
+        self._fetching = threading.Thread(target=self._internal_load_map, daemon=True)
         self._fetching.start()
 
-    def _internal_load_map(self, position, zoom, isWorld):
-        self._mapper.load_map_coordinates(position, zoom, isWorld)
-        self.redraw_map()
+    def _internal_load_map(self):
+        try:
+            with open(self._cache_file, "rb") as cache_file:
+                cached_bytes = cache_file.read()
+        except OSError:
+            cached_bytes = None
+
+        if cached_bytes:
+            try:
+                map_surf = pygame.image.load(io.BytesIO(cached_bytes)).convert()
+                arr = pygame.surfarray.pixels3d(map_surf)
+                mean_arr = np.dot(arr[:, :, :], [0.216, 0.587, 0.144])
+                mean_arr3d = mean_arr[..., np.newaxis]
+                new_arr = np.repeat(mean_arr3d[:, :, :], 3, axis=2)
+                map_surf = pygame.surfarray.make_surface(new_arr.astype(np.uint8))
+                map_surf.fill((0, 230, 0), None, pygame.BLEND_RGBA_MULT)
+                self._map_surface.blit(map_surf, (0, 0))
+                self._map_surface.blit(self._player_marker, (settings.WIDTH / 2 - 20, self._render_rect.centery - 20))
+                self.redraw_map()
+                return
+            except pygame.error:
+                # Older cache files may contain non-image map data.
+                pass
+
+        if self._last_request:
+            self._internal_fetch_map(*self._last_request)
 
     def move_map(self, x, y):
         self._render_rect.move_ip(x, y)

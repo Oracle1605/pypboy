@@ -19,7 +19,15 @@ class Module(pypboy.SubModule):
         self.add(self.thumbs)
 
         if settings.SOUND_ENABLED:
-            self.sound = pygame.mixer.Sound('sounds/pipboy/BootSequence/UI_PipBoy_BootSequence_C.ogg')
+            self.sound = pygame.mixer.Sound(
+                os.path.join(
+                    settings.ROOT_DIR,
+                    "sounds",
+                    "pipboy",
+                    "BootSequence",
+                    "UI_PipBoy_BootSequence_C.ogg",
+                )
+            )
             self.sound.set_volume(settings.VOLUME)
     
     def handle_pause(self):
@@ -51,10 +59,10 @@ class Thumbs(game.Entity):
 
         self.brightness = list(range(0, 150, 15)) + list(range(150, 0, -15))
         self.brightness_index = 0
-        path = "./images/boot"
+        path = os.path.join(settings.ROOT_DIR, "images", "boot")
         for filename in sorted(os.listdir(path)):
             if filename.endswith(".png"):
-                self.images.append(pygame.image.load(path + "/" + filename).convert_alpha())
+                self.images.append(pygame.image.load(os.path.join(path, filename)).convert_alpha())
                       
     def render(self):
         

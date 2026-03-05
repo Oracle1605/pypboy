@@ -111,22 +111,37 @@ class Pypboy(game.core.Engine):
 
     def handle_event(self, event):
         if event.type == pygame.KEYDOWN:  # Some key has been pressed
+            radio = getattr(settings, "radio", None)
             # Persistent Events:
             if event.key == pygame.K_ESCAPE:  # ESC
                 self.running = False
 
             elif event.key == pygame.K_PAGEUP:  # Volume up
-                settings.radio.handle_radio_event(event)
+                if radio:
+                    radio.handle_radio_event(event)
             elif event.key == pygame.K_PAGEDOWN:  # Volume down
-                settings.radio.handle_radio_event(event)
+                if radio:
+                    radio.handle_radio_event(event)
             elif event.key == pygame.K_END:  # Next Song
-                settings.radio.handle_radio_event(event)
+                if radio:
+                    radio.handle_radio_event(event)
             elif event.key == pygame.K_HOME:  # Prev Song
-                settings.radio.handle_radio_event(event)
+                if radio:
+                    radio.handle_radio_event(event)
             elif event.key == pygame.K_DELETE:
-                settings.radio.handle_radio_event(event)
+                if radio:
+                    radio.handle_radio_event(event)
             elif event.key == pygame.K_INSERT:
-                settings.radio.handle_radio_event(event)
+                # Hidden dev toggle: Shift+Insert uncaps/re-caps frame rate.
+                if pygame.key.get_mods() & pygame.KMOD_SHIFT:
+                    if settings.fps_rate > 0:
+                        settings.fps_rate = 0
+                        print("DEV: FPS uncapped")
+                    else:
+                        settings.fps_rate = (1 / settings.frame_per_second)
+                        print(f"DEV: FPS capped at {settings.frame_per_second}")
+                elif radio:
+                    radio.handle_radio_event(event)
             elif event.key == pygame.K_F9:
                 settings.SHOW_FPS = not getattr(settings, "SHOW_FPS", True)
             else:
@@ -144,9 +159,9 @@ class Pypboy(game.core.Engine):
             if settings.SOUND_ENABLED:
                 if hasattr(settings, 'radio'):
                     settings.radio.handle_radio_event(event)
-        else:
-            if hasattr(self, 'active'):
-                self.active.handle_event(event)
+
+        if hasattr(self, 'active'):
+            self.active.handle_event(event)
 
     def inRange(self, angle, init, end):
         return (angle >= init) and (angle < end)
@@ -157,8 +172,6 @@ class Pypboy(game.core.Engine):
             self.check_gpio_input()
             for event in pygame.event.get():
                 self.handle_event(event)
-                if hasattr(self, 'active'):
-                    self.active.handle_event(event)
 
             # slow code debugger
             # debug_time = time.time()

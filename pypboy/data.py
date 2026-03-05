@@ -5,6 +5,8 @@ from numpy.fft import fft
 from math import log10 
 import math
 import pygame
+import os
+import settings
 
 
 class Maps(object):
@@ -76,10 +78,11 @@ class Maps(object):
         #TODO: REMOVE \n character and b' and ' from beginning and end of string
 
         #Write to cache file
+        cache_path = os.path.join(settings.ROOT_DIR, "worldMap.cache" if isWorld else "localMap.cache")
         if isWorld:
-            f = open("worldMap.cache", "w")
+            f = open(cache_path, "w")
         else:
-            f = open("localMap.cache", "w")
+            f = open(cache_path, "w")
         f.write(str(map_data))
         f.close()
         self.display_map(map_data)
@@ -100,11 +103,11 @@ class Maps(object):
                 bounds[1] + self.height
         )
         if isWorld:
-            with open('worldMap.cache', 'r', encoding="utf-8") as mapcache:
+            with open(os.path.join(settings.ROOT_DIR, 'worldMap.cache'), 'r', encoding="utf-8") as mapcache:
                 map_data = mapcache.read().replace("b'", "").replace("\\n", "")[0:-1]
             self.display_map(map_data)
         else:
-            with open('localMap.cache', 'r', encoding="utf-8") as mapcache:
+            with open(os.path.join(settings.ROOT_DIR, 'localMap.cache'), 'r', encoding="utf-8") as mapcache:
                 map_data = mapcache.read().replace("b'", "").replace("\\n", "")[0:-1]
             self.display_map(map_data)
             

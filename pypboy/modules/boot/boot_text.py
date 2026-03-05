@@ -3,6 +3,7 @@ import game
 import settings
 import pypboy.core
 import time
+import os
 
 def word_wrap(surf, text, font):
     font.origin = True
@@ -31,7 +32,15 @@ class Module(pypboy.SubModule):
         self.boot.rect[1] = 51
         self.add(self.boot)
         if settings.SOUND_ENABLED:
-            self.sound = pygame.mixer.Sound('sounds/pipboy/BootSequence/UI_PipBoy_BootSequence_A.ogg')
+            self.sound = pygame.mixer.Sound(
+                os.path.join(
+                    settings.ROOT_DIR,
+                    "sounds",
+                    "pipboy",
+                    "BootSequence",
+                    "UI_PipBoy_BootSequence_A.ogg",
+                )
+            )
             self.sound.set_volume(settings.VOLUME)
 
     def handle_pause(self):

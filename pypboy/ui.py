@@ -416,6 +416,7 @@ class Menu(game.Entity):
     def __init__(self, menu_array=[], callbacks=[], selected=0):
         super(Menu, self).__init__((settings.WIDTH - settings.menu_x, 490))
         self.source_array = menu_array
+        self._asset_cache = {}
 
         self.prev_time = 0
         self.prev_fps_time = 0
@@ -445,8 +446,49 @@ class Menu(game.Entity):
         self.select(self.selected)
 
         if settings.SOUND_ENABLED:
-            self.dial_move_sfx = pygame.mixer.Sound('sounds/pipboy/RotaryVertical/UI_PipBoy_RotaryVertical_01.ogg')
+            self.dial_move_sfx = pygame.mixer.Sound(
+                os.path.join(
+                    settings.ROOT_DIR,
+                    "sounds",
+                    "pipboy",
+                    "RotaryVertical",
+                    "UI_PipBoy_RotaryVertical_01.ogg",
+                )
+            )
             self.dial_move_sfx.set_volume(settings.VOLUME)
+
+    def _get_image_assets(self, image_path):
+        cached = self._asset_cache.get(image_path)
+        if cached is not None:
+            return cached
+
+        assets = {
+            "images": [],
+            "frameorder": [],
+            "static_image": None,
+        }
+
+        if os.path.isdir(image_path):
+            for filename in sorted(os.listdir(image_path)):
+                full_path = os.path.join(image_path, filename)
+                if filename.endswith(".png"):
+                    assets["images"].append(pygame.image.load(full_path).convert_alpha())
+                elif filename.endswith(".svg"):
+                    svg_surface = load_svg(full_path, self.imagebox.get_width(), self.imagebox.get_height())
+                    assets["images"].append(svg_surface)
+                elif filename == "frameorder.py":
+                    spec = importlib.util.spec_from_file_location("frameorder", full_path)
+                    module = importlib.util.module_from_spec(spec)
+                    spec.loader.exec_module(module)
+                    assets["frameorder"] = module.frameorder
+        else:
+            if image_path.endswith(".svg"):
+                assets["static_image"] = load_svg(image_path, self.imagebox.get_width(), self.imagebox.get_height())
+            else:
+                assets["static_image"] = pygame.image.load(image_path).convert_alpha()
+
+        self._asset_cache[image_path] = assets
+        return assets
 
     def select(self, item):
         if not settings.hide_main_menu:
@@ -513,40 +555,20 @@ class Menu(game.Entity):
                 pygame.draw.rect(self.image, (settings.bright), selected_rect)
 
                 self.images = []
+                self.frameorder = []
                 try:  # Try loading a image if there is one
                     self.image_url = self.menu_array[i][2]
                     if self.image_url:
                         image_path = os.path.join(settings.ROOT_DIR, self.image_url)
-                        if os.path.isdir(image_path):
-                            self.frameorder = []
-                            for filename in sorted(os.listdir(image_path)):
-                                full_path = os.path.join(image_path, filename)
-                                if filename.endswith(".png"):
-                                    self.images.append(pygame.image.load(full_path).convert_alpha())
-                                elif filename.endswith(".svg"):
-                                    svg_surface = load_svg(full_path, self.imagebox.get_width(),
-                                                         self.imagebox.get_height())
-                                    self.images.append(svg_surface)
-                                elif filename == "frameorder.py":
-                                    # --- MODERN IMPORTLIB REPLACEMENT FOR IMP ---
-                                    import importlib.util
-                                    spec = importlib.util.spec_from_file_location("frameorder", full_path)
-                                    module = importlib.util.module_from_spec(spec)
-                                    spec.loader.exec_module(module)
-                                    # --------------------------------------------
-                                    self.frameorder = module.frameorder
-                                    self.frame = 0
-                        else:
-                            self.frameorder = []
-                            # self.imagebox.fill(settings.black)
-                            if image_path.endswith(".svg"):
-                                graphic = load_svg(image_path, self.imagebox.get_width(),
-                                                   self.imagebox.get_height())
-                                self.imagebox.blit(graphic, (0, 0))
-                                self.image.blit(self.imagebox, (400, 0))
-                            else:
-                                graphic = pygame.image.load(image_path).convert_alpha()
-                                self.image.blit(graphic, (0, 0))
+                        assets = self._get_image_assets(image_path)
+                        self.images = list(assets["images"])
+                        self.frameorder = list(assets["frameorder"])
+                        self.frame = 0
+
+                        if assets["static_image"] is not None:
+                            self.imagebox.fill(settings.black)
+                            self.imagebox.blit(assets["static_image"], (0, 0))
+                            self.image.blit(self.imagebox, (400, 0))
 
 
 

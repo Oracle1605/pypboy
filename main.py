@@ -100,9 +100,9 @@ if __name__ == "__main__":
                     hol_mod.add(hol)
                     last_page = len(hol.holotape_data[3]) - 1
                     hol.write_display(last_page, False)
-                    # convert to relative paths and queue them
-                    rels = [os.path.relpath(p, os.getcwd()) for (p, _label) in audio_entries]
-                    hol.load_audio_file(rels)
+                    # queue absolute paths so playback does not depend on CWD
+                    files = [p for (p, _label) in audio_entries]
+                    hol.load_audio_file(files)
                     break
 
     boy.run()
