@@ -79,9 +79,10 @@ if __name__ == "__main__":
 
     # optionally autoplay the System Test holotape for diagnostics
     if options.autoplay and "data" in boy.modules:
+        data_module = boy.get_module("data")
         # locate holotape submodule
         hol_mod = None
-        for sm in boy.modules["data"].submodules:
+        for sm in data_module.submodules:
             if hasattr(sm, "holotapes"):
                 hol_mod = sm
                 break

@@ -62,16 +62,27 @@ class Pypboy(game.core.Engine):
         pass
 
     def init_modules(self):
-        self.modules = {
-            "radio": radio.Module(self),
-            "map": map.Module(self),
-            "data": data.Module(self),
-            "items": items.Module(self),
-            "stats": stats.Module(self),
-            "boot": boot.Module(self),
-            
+        self._module_factories = {
+            "radio": radio.Module,
+            "map": map.Module,
+            "data": data.Module,
+            "items": items.Module,
+            "stats": stats.Module,
+            "boot": boot.Module,
         }
+        # Lazy module loading keeps startup memory low by constructing only
+        # the active module and instantiating others on first switch.
+        self.modules = {name: None for name in self._module_factories}
         self.switch_module(settings.STARTER_MODULE)  # Set the start screen
+
+    def get_module(self, module_name):
+        if module_name not in self._module_factories:
+            return None
+        module = self.modules.get(module_name)
+        if module is None:
+            module = self._module_factories[module_name](self)
+            self.modules[module_name] = module
+        return module
 
     def init_gpio_controls(self):
         for pin in settings.gpio_actions.keys():
@@ -95,7 +106,7 @@ class Pypboy(game.core.Engine):
             if hasattr(self, 'active'):
                 self.active.handle_action("pause")
                 self.remove(self.active)
-            self.active = self.modules[module]
+            self.active = self.get_module(module)
             self.active.parent = self
             self.active.handle_action("resume")
             self.add(self.active)
