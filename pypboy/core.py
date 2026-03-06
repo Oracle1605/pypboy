@@ -59,7 +59,15 @@ class Pypboy(game.core.Engine):
         self.root_persitant.add(overlay)
         scanlines = pypboy.ui.Scanlines()
         self.root_persitant.add(scanlines)
-        pass
+
+        # A single shared footer is rendered in its own group so it can be
+        # updated by whichever submodule is currently active.
+        self.footer = pypboy.ui.Footer([])
+        self.footer.rect[0] = settings.footer_x
+        self.footer.rect[1] = settings.footer_y
+        self.footer_group = game.EntityGroup()
+        self.footer_group.add(self.footer)
+        self.add(self.footer_group)
 
     def init_modules(self):
         self._module_factories = {
@@ -110,8 +118,16 @@ class Pypboy(game.core.Engine):
             self.active.parent = self
             self.active.handle_action("resume")
             self.add(self.active)
+            # Keep shared footer group rendered last so it is always visible.
+            self.remove(self.footer_group)
+            self.add(self.footer_group)
         else:
             print("Module '%s' not implemented." % module)
+
+    def set_footer(self, sections=None, y=None):
+        self.footer.sections = sections if sections is not None else []
+        self.footer.rect[0] = settings.footer_x
+        self.footer.rect[1] = settings.footer_y if y is None else y
 
     def handle_action(self, action):
         if action.startswith('module_'):

@@ -144,6 +144,8 @@ class SubModule(game.EntityGroup):
         super(SubModule, self).__init__()
         self.parent = parent
         self.paused = True
+        self.footer_sections = []
+        self.footer_y = settings.footer_y
 
         self.action_handlers = {
             "pause": self.handle_pause,
@@ -182,8 +184,23 @@ class SubModule(game.EntityGroup):
         if self.paused == False:
             self.paused = True
 
+    def configure_footer(self, sections, y=None):
+        self.footer_sections = sections if sections is not None else []
+        if y is not None:
+            self.footer_y = y
+        parent = getattr(self, "parent", None)
+        if parent is not None and getattr(parent, "active", None) is self:
+            parent.pypboy.set_footer(self.footer_sections, self.footer_y)
+
+    def set_footer_y(self, y=None):
+        self.footer_y = settings.footer_y if y is None else y
+        parent = getattr(self, "parent", None)
+        if parent is not None and getattr(parent, "active", None) is self:
+            parent.pypboy.set_footer(self.footer_sections, self.footer_y)
+
     def handle_resume(self):
         if self.paused == True:
             self.paused = False
+            self.parent.pypboy.set_footer(self.footer_sections, self.footer_y)
             if settings.SOUND_ENABLED:
                 self.submodule_change_sfx.play()

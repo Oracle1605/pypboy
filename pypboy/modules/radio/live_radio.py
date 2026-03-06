@@ -107,10 +107,7 @@ class Module(pypboy.SubModule):
         self.add(self.menu)
         self.menu.select(settings.STATION)
 
-        self.footer = pypboy.ui.Footer(settings.FOOTER_RADIO)
-        self.footer.rect[0] = settings.footer_x
-        self.footer.rect[1] = settings.footer_y
-        self.add(self.footer)
+        self.configure_footer(settings.FOOTER_RADIO)
 
     def select_station(self, station):
         if hasattr(self, 'active_station') and self.active_station:

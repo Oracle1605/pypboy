@@ -34,10 +34,7 @@ class Module(pypboy.SubModule):
         self.topmenu.label = "MAP"
         self.topmenu.title = settings.MODULE_TEXT
 
-        self.footer = pypboy.ui.Footer(settings.FOOTER_TIME)
-        self.footer.rect[0] = settings.footer_x
-        self.footer.rect[1] = settings.footer_y
-        self.add(self.footer)
+        self.configure_footer(settings.FOOTER_TIME)
     
     def handle_action(self, action, value=0):
         if action == "zoom_in":

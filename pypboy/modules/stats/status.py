@@ -34,10 +34,7 @@ class Module(pypboy.SubModule):
 
         self.prev_time = 0
 
-        self.footer = pypboy.ui.Footer(settings.STATUS_FOOTER)
-        self.footer.rect[0] = settings.footer_x
-        self.footer.rect[1] = settings.footer_y
-        self.add(self.footer)
+        self.configure_footer(settings.STATUS_FOOTER)
         # STATUS_FOOTER = ["HP 115/115", "LEVEL 66", "AP 90/90", 90, True]
 
     #     self.menu = pypboy.ui.Menu(["CND", "RAD", "EFF"], [self.show_cnd, self.show_rad, self.show_eff], 0)
@@ -63,18 +60,18 @@ class Module(pypboy.SubModule):
             if self.delta_time >= settings.glitch_time:
                 if settings.glitch_next == 0 or settings.glitch_next == 2 or settings.glitch_next == 4:
                     self.health.rect[1] = -69
-                    self.footer.rect[1] = 62
+                    self.set_footer_y(62)
                     self.animation.rect[1] = -10
                     self.prev_time = self.current_time
                 elif settings.glitch_next == 1 or settings.glitch_next == 3 or settings.glitch_next == 5:
                     self.health.rect[1] = 331
-                    self.footer.rect[1] = 531
+                    self.set_footer_y(531)
                     self.animation.rect[1] = 390
                     self.prev_time = self.current_time
                 elif settings.glitch_next == 6:
                     self.health.rect[1] = 131
                     self.animation.rect[1] = 190
-                    self.footer.rect[1] = settings.footer_y
+                    self.set_footer_y()
                     self.prev_time = self.current_time
                 elif settings.glitch_next >= 7:
                     settings.glitch_next = 0
