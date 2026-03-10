@@ -1020,3 +1020,57 @@ queue load invoked, stack:
   File "/home/eli/workspace/pypboy/pypboy/modules/data/holotape_processor.py", line 1001, in load_audio_file
     trace = ''.join(traceback.format_stack(limit=10))
 Now Playing: /home/eli/workspace/pypboy/holotapes/Eddie_Winter/Eddie_Winter_Holotape-5.ogg
+start_audio_queue index=3 files=['/home/eli/workspace/pypboy/holotapes/Eddie_Winter/Eddie_Winter_Holotape-0.ogg', '/home/eli/workspace/pypboy/holotapes/Eddie_Winter/Eddie_Winter_Holotape-1.ogg', '/home/eli/workspace/pypboy/holotapes/Eddie_Winter/Eddie_Winter_Holotape-2.ogg', '/home/eli/workspace/pypboy/holotapes/Eddie_Winter/Eddie_Winter_Holotape-3.ogg', '/home/eli/workspace/pypboy/holotapes/Eddie_Winter/Eddie_Winter_Holotape-4.ogg', '/home/eli/workspace/pypboy/holotapes/Eddie_Winter/Eddie_Winter_Holotape-5.ogg', '/home/eli/workspace/pypboy/holotapes/Eddie_Winter/Eddie_Winter_Holotape-6.ogg', '/home/eli/workspace/pypboy/holotapes/Eddie_Winter/Eddie_Winter_Holotape-7.ogg', '/home/eli/workspace/pypboy/holotapes/Eddie_Winter/Eddie_Winter_Holotape-8.ogg', '/home/eli/workspace/pypboy/holotapes/Eddie_Winter/Eddie_Winter_Holotape-9.ogg']
+load_audio_file called with ['/home/eli/workspace/pypboy/holotapes/Eddie_Winter/Eddie_Winter_Holotape-3.ogg', '/home/eli/workspace/pypboy/holotapes/Eddie_Winter/Eddie_Winter_Holotape-4.ogg', '/home/eli/workspace/pypboy/holotapes/Eddie_Winter/Eddie_Winter_Holotape-5.ogg', '/home/eli/workspace/pypboy/holotapes/Eddie_Winter/Eddie_Winter_Holotape-6.ogg', '/home/eli/workspace/pypboy/holotapes/Eddie_Winter/Eddie_Winter_Holotape-7.ogg', '/home/eli/workspace/pypboy/holotapes/Eddie_Winter/Eddie_Winter_Holotape-8.ogg', '/home/eli/workspace/pypboy/holotapes/Eddie_Winter/Eddie_Winter_Holotape-9.ogg']
+queue load invoked, stack:
+  File "/home/eli/workspace/pypboy/main.py", line 116, in <module>
+    boy.run()
+  File "/home/eli/workspace/pypboy/pypboy/core.py", line 201, in run
+    self.handle_event(event)
+  File "/home/eli/workspace/pypboy/pypboy/core.py", line 191, in handle_event
+    self.active.handle_event(event)
+  File "/home/eli/workspace/pypboy/pypboy/__init__.py", line 122, in handle_event
+    self.active.handle_event(event)
+  File "/home/eli/workspace/pypboy/pypboy/modules/data/holotape_processor.py", line 161, in handle_event
+    self.start_audio_queue(idx, paths)
+  File "/home/eli/workspace/pypboy/pypboy/modules/data/holotape_processor.py", line 118, in start_audio_queue
+    self.active_holotape.load_audio_file(queue)
+  File "/home/eli/workspace/pypboy/pypboy/modules/data/holotape_processor.py", line 871, in load_audio_file
+    trace = ''.join(traceback.format_stack(limit=10))
+Now Playing: /home/eli/workspace/pypboy/holotapes/Eddie_Winter/Eddie_Winter_Holotape-3.ogg
+start_audio_queue index=1 files=['/home/eli/workspace/pypboy/holotapes/Eddie_Winter/Eddie_Winter_Holotape-0.ogg', '/home/eli/workspace/pypboy/holotapes/Eddie_Winter/Eddie_Winter_Holotape-1.ogg', '/home/eli/workspace/pypboy/holotapes/Eddie_Winter/Eddie_Winter_Holotape-2.ogg', '/home/eli/workspace/pypboy/holotapes/Eddie_Winter/Eddie_Winter_Holotape-3.ogg', '/home/eli/workspace/pypboy/holotapes/Eddie_Winter/Eddie_Winter_Holotape-4.ogg', '/home/eli/workspace/pypboy/holotapes/Eddie_Winter/Eddie_Winter_Holotape-5.ogg', '/home/eli/workspace/pypboy/holotapes/Eddie_Winter/Eddie_Winter_Holotape-6.ogg', '/home/eli/workspace/pypboy/holotapes/Eddie_Winter/Eddie_Winter_Holotape-7.ogg', '/home/eli/workspace/pypboy/holotapes/Eddie_Winter/Eddie_Winter_Holotape-8.ogg', '/home/eli/workspace/pypboy/holotapes/Eddie_Winter/Eddie_Winter_Holotape-9.ogg']
+load_audio_file called with ['/home/eli/workspace/pypboy/holotapes/Eddie_Winter/Eddie_Winter_Holotape-1.ogg', '/home/eli/workspace/pypboy/holotapes/Eddie_Winter/Eddie_Winter_Holotape-2.ogg', '/home/eli/workspace/pypboy/holotapes/Eddie_Winter/Eddie_Winter_Holotape-3.ogg', '/home/eli/workspace/pypboy/holotapes/Eddie_Winter/Eddie_Winter_Holotape-4.ogg', '/home/eli/workspace/pypboy/holotapes/Eddie_Winter/Eddie_Winter_Holotape-5.ogg', '/home/eli/workspace/pypboy/holotapes/Eddie_Winter/Eddie_Winter_Holotape-6.ogg', '/home/eli/workspace/pypboy/holotapes/Eddie_Winter/Eddie_Winter_Holotape-7.ogg', '/home/eli/workspace/pypboy/holotapes/Eddie_Winter/Eddie_Winter_Holotape-8.ogg', '/home/eli/workspace/pypboy/holotapes/Eddie_Winter/Eddie_Winter_Holotape-9.ogg']
+queue load invoked, stack:
+  File "/home/eli/workspace/pypboy/main.py", line 116, in <module>
+    boy.run()
+  File "/home/eli/workspace/pypboy/pypboy/core.py", line 201, in run
+    self.handle_event(event)
+  File "/home/eli/workspace/pypboy/pypboy/core.py", line 191, in handle_event
+    self.active.handle_event(event)
+  File "/home/eli/workspace/pypboy/pypboy/__init__.py", line 122, in handle_event
+    self.active.handle_event(event)
+  File "/home/eli/workspace/pypboy/pypboy/modules/data/holotape_processor.py", line 161, in handle_event
+    self.start_audio_queue(idx, paths)
+  File "/home/eli/workspace/pypboy/pypboy/modules/data/holotape_processor.py", line 118, in start_audio_queue
+    self.active_holotape.load_audio_file(queue)
+  File "/home/eli/workspace/pypboy/pypboy/modules/data/holotape_processor.py", line 871, in load_audio_file
+    trace = ''.join(traceback.format_stack(limit=10))
+Now Playing: /home/eli/workspace/pypboy/holotapes/Eddie_Winter/Eddie_Winter_Holotape-1.ogg
+start_audio_queue index=0 files=['/home/eli/workspace/pypboy/holotapes/Eddie_Winter/Eddie_Winter_Holotape-0.ogg', '/home/eli/workspace/pypboy/holotapes/Eddie_Winter/Eddie_Winter_Holotape-1.ogg', '/home/eli/workspace/pypboy/holotapes/Eddie_Winter/Eddie_Winter_Holotape-2.ogg', '/home/eli/workspace/pypboy/holotapes/Eddie_Winter/Eddie_Winter_Holotape-3.ogg', '/home/eli/workspace/pypboy/holotapes/Eddie_Winter/Eddie_Winter_Holotape-4.ogg', '/home/eli/workspace/pypboy/holotapes/Eddie_Winter/Eddie_Winter_Holotape-5.ogg', '/home/eli/workspace/pypboy/holotapes/Eddie_Winter/Eddie_Winter_Holotape-6.ogg', '/home/eli/workspace/pypboy/holotapes/Eddie_Winter/Eddie_Winter_Holotape-7.ogg', '/home/eli/workspace/pypboy/holotapes/Eddie_Winter/Eddie_Winter_Holotape-8.ogg', '/home/eli/workspace/pypboy/holotapes/Eddie_Winter/Eddie_Winter_Holotape-9.ogg']
+load_audio_file called with ['/home/eli/workspace/pypboy/holotapes/Eddie_Winter/Eddie_Winter_Holotape-0.ogg', '/home/eli/workspace/pypboy/holotapes/Eddie_Winter/Eddie_Winter_Holotape-1.ogg', '/home/eli/workspace/pypboy/holotapes/Eddie_Winter/Eddie_Winter_Holotape-2.ogg', '/home/eli/workspace/pypboy/holotapes/Eddie_Winter/Eddie_Winter_Holotape-3.ogg', '/home/eli/workspace/pypboy/holotapes/Eddie_Winter/Eddie_Winter_Holotape-4.ogg', '/home/eli/workspace/pypboy/holotapes/Eddie_Winter/Eddie_Winter_Holotape-5.ogg', '/home/eli/workspace/pypboy/holotapes/Eddie_Winter/Eddie_Winter_Holotape-6.ogg', '/home/eli/workspace/pypboy/holotapes/Eddie_Winter/Eddie_Winter_Holotape-7.ogg', '/home/eli/workspace/pypboy/holotapes/Eddie_Winter/Eddie_Winter_Holotape-8.ogg', '/home/eli/workspace/pypboy/holotapes/Eddie_Winter/Eddie_Winter_Holotape-9.ogg']
+queue load invoked, stack:
+  File "/home/eli/workspace/pypboy/main.py", line 116, in <module>
+    boy.run()
+  File "/home/eli/workspace/pypboy/pypboy/core.py", line 201, in run
+    self.handle_event(event)
+  File "/home/eli/workspace/pypboy/pypboy/core.py", line 191, in handle_event
+    self.active.handle_event(event)
+  File "/home/eli/workspace/pypboy/pypboy/__init__.py", line 122, in handle_event
+    self.active.handle_event(event)
+  File "/home/eli/workspace/pypboy/pypboy/modules/data/holotape_processor.py", line 161, in handle_event
+    self.start_audio_queue(idx, paths)
+  File "/home/eli/workspace/pypboy/pypboy/modules/data/holotape_processor.py", line 118, in start_audio_queue
+    self.active_holotape.load_audio_file(queue)
+  File "/home/eli/workspace/pypboy/pypboy/modules/data/holotape_processor.py", line 871, in load_audio_file
+    trace = ''.join(traceback.format_stack(limit=10))
+Now Playing: /home/eli/workspace/pypboy/holotapes/Eddie_Winter/Eddie_Winter_Holotape-0.ogg

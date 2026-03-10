@@ -266,7 +266,7 @@ AMMO = [
 FOOTER_TIME = ["DATE", "TIME", "", None, False]
 
 QUESTS = [
-    ["War Never Changes","","images/quests/war_never_changes","Get to Vault 111. Survive."],
+    ["Blasphemy","","images/quests/war_never_changes","Fight God, Survive."],
     ["Out of Time","","images/quests/out_of_time",
      "While cryogenically frozen in Vault 111, I awoke just long enough to witness the murder of my wife/husband and the abduction of my infant son. I need to escape Vault 111 and return home, so I can begin to make sense of this tragedy."],
     ["Unlikely Valentine","","images/quests/unlikely_valentine",
